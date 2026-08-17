@@ -1,57 +1,15 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="description" content="EduFlow — Bangladesh-first coaching center management SaaS" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="EduFlow — Bangladesh-first coaching center management SaaS">
   <title>EduFlow — Coaching Center OS</title>
-  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="styles.css">
 </head>
 <body>
   <div id="app"></div>
-
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
-  <script>
-    // Startup shim: app.js expects a global bootstrap() function.
-    // It is declared before app.js so the browser never throws
-    // "ReferenceError: bootstrap is not defined".
-    async function bootstrap() {
-      try {
-        if (typeof startApp === "function") {
-          await startApp();
-          return;
-        }
-        if (typeof authShell === "function") {
-          authShell();
-          return;
-        }
-        const app = document.getElementById("app");
-        if (app) {
-          app.innerHTML = `
-            <div style="min-height:100vh;display:grid;place-items:center;background:#f5f7fb;padding:24px;font-family:system-ui,sans-serif">
-              <div style="max-width:520px;background:#fff;border:1px solid #e5e7eb;border-radius:16px;padding:28px;box-shadow:0 10px 30px rgba(0,0,0,.06)">
-                <h1 style="margin:0 0 8px">EduFlow</h1>
-                <p style="color:#6b7280;margin:0">The app loaded, but the current JavaScript build is missing its startup function. Please refresh after the latest deployment.</p>
-              </div>
-            </div>`;
-        }
-      } catch (error) {
-        const app = document.getElementById("app");
-        if (app) {
-          app.innerHTML = `
-            <div style="min-height:100vh;display:grid;place-items:center;background:#f5f7fb;padding:24px;font-family:system-ui,sans-serif">
-              <div style="max-width:620px;background:#fff3f3;border:1px solid #fecaca;border-radius:16px;padding:28px">
-                <h1 style="margin:0 0 8px;color:#991b1b">EduFlow could not start</h1>
-                <pre style="white-space:pre-wrap;color:#7f1d1d">${String(error?.message || error)}</pre>
-              </div>
-            </div>`;
-        }
-        console.error(error);
-      }
-    }
-  </script>
-
   <script src="app.js"></script>
 </body>
 </html>

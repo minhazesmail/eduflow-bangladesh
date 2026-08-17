@@ -1,95 +1,305 @@
+
+'use strict';
+
 const SUPABASE_URL = 'https://tljxhsspwabeslpbyiif.supabase.co';
-const SUPABASE_ANON_KEY = 'sb_publishable_LhIRXury0u3KuwbT7RApdQ_rsMFM-tm';
-let sb = null;
+const SUPABASE_KEY = 'sb_publishable_LhIRXury0u3KuwbT7RApdQ_rsMFM-tm';
+
+let client = null;
 let session = null;
 let profile = null;
-let currentPage = 'dashboard';
-let currentDate = new Date().toISOString().slice(0,10);
-let selectedBatchId = 'all';
-let selectedExamId = null;
-let data = { students:[], batches:[], teachers:[], payments:[], exams:[], results:[], attendance:[], notices:[] };
-const cacheKey = 'eduflow-last-page';
-const sidebarKey = 'eduflow-sidebar-hidden';
-let sidebarHidden = localStorage.getItem(sidebarKey) === '1';
+let page = 'dashboard';
+let authMode = 'signin';
+let dataset = {students:[], batches:[], teachers:[], payments:[], exams:[], results:[], attendance:[], notices:[]};
 
-const icons = {dashboard:'⌂',students:'◉',batches:'▤',attendance:'✓',fees:'৳',exams:'▣',teachers:'♟',notices:'◈',settings:'⚙'};
-const esc = s => String(s ?? '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
-const money = n => '৳' + Number(n || 0).toLocaleString('en-BD');
-const uuidish = () => crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
-function toast(msg, type='info'){ const el=document.createElement('div'); el.className='toast'; el.textContent=msg; document.body.appendChild(el); setTimeout(()=>el.remove(),2600); }
-function setBusy(button,busy,label){ if(!button)return; button.disabled=busy; button.dataset.oldText ||= button.textContent; button.textContent=busy?'Working…':(label || button.dataset.oldText); }
-function ensureClient(){ if(!window.supabase){ throw new Error('Supabase library did not load. Please refresh and try again.'); } if(!sb) sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY); return sb; }
-function orgId(){ return profile?.organization_id; }
-function table(name){ return ensureClient().from(name); }
-function nav(id,label){ return `<button class="${currentPage===id?'active':''}" onclick="go('${id}')"><span class="ico">${icons[id]}</span>${label}</button>`; }
-function pageTitle(){return {dashboard:'Dashboard',students:'Students',batches:'Batches',attendance:'Attendance',fees:'Fees & Payments',exams:'Exams & Results',teachers:'Teachers',notices:'Notices',settings:'Settings'}[currentPage] || 'EduFlow';}
+const $ = (id) => document.getElementById(id);
+const esc = (v='') => String(v).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));
+const money = (v) => '৳' + Number(v || 0).toLocaleString('en-BD');
+const today = () => new Date().toISOString().slice(0,10);
+const orgId = () => profile?.organization_id;
 
-function authShell(message=''){
-  document.getElementById('app').innerHTML=`<div class="app ${sidebarHidden?'sidebar-collapsed':''}"><aside class="sidebar" id="sidebar"><div class="brand"><div class="brand-mark">EF</div><div><strong>EduFlow</strong><small>Bangladesh • Coaching OS</small></div></div><nav class="nav"><div class="nav-group-title">Main</div>${nav('dashboard','Dashboard')}${nav('students','Students')}${nav('batches','Batches')}${nav('attendance','Attendance')}${nav('fees','Fees & Payments')}${nav('exams','Exams & Results')}${nav('teachers','Teachers')}${nav('notices','Notices')}<div class="nav-divider"></div><div class="nav-group-title">Administration</div>${nav('settings','Settings')}</nav><div class="sidebar-bottom"><div class="muted">Workspace</div><strong>${esc(profile?.organizations?.name||'My Coaching Center')}</strong></div><button class="sidebar-hide" onclick="toggleSidebarHidden()">⇥ Hide sidebar</button></aside><main class="main"><header class="topbar"><div style="display:flex;align-items:center;gap:10px"><button class="mobile-menu" onclick="${sidebarHidden?'toggleSidebarHidden()':'toggleSidebar()'}">☰</button><button class="desktop-sidebar-toggle btn btn-secondary btn-sm" onclick="toggleSidebarHidden()">${sidebarHidden?'☰ Show sidebar':'⇥ Hide sidebar'}</button><div class="topbar-title">${pageTitle()}</div></div><div class="right"><span class="subtitle">${esc(profile?.full_name||'Admin')}</span><button class="btn btn-secondary btn-sm" onclick="logout()">Sign out</button></div></header><section class="container">${page()}</section></main></div>`;
+function supa() {
+  if (!window.supabase) throw new Error('Supabase library did not load. Please refresh.');
+  if (!client) client = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+  return client;
 }
-function page(){return currentPage==='dashboard'?dashboard():currentPage==='students'?students():currentPage==='batches'?batches():currentPage==='attendance'?attendance():currentPage==='fees'?fees():currentPage==='exams'?exams():currentPage==='teachers'?teachers():currentPage==='notices'?notices():settings();}
-function go(p){currentPage=p;closeModal();render();window.scrollTo({top:0,behavior:'smooth'});}
-function toggleSidebar(){document.getElementById('sidebar')?.classList.toggle('open');}
-function toggleSidebarHidden(){sidebarHidden=!sidebarHidden;localStorage.setItem(sidebarKey,sidebarHidden?'1':'0');render();}
-function stat(label,value,note,iconText){return `<div class="card stat"><div><div class="label">${label}</div><div class="value">${value}</div><div class="kpi-note">${note||''}</div></div><div class="iconbox">${iconText}</div></div>`;}
 
-function dashboard(){
-  const total=data.students.length, atRisk=data.students.filter(s=>riskFor(s)==='At Risk').length, collected=data.payments.reduce((a,p)=>a+Number(p.amount||0),0), outstanding=data.students.reduce((a,s)=>a+Math.max(0,Number(s.monthly_fee||0)-s.paid),0);
-  const todayAtt=data.attendance.filter(a=>a.attendance_date===currentDate); const todayPct=todayAtt.length?Math.round(todayAtt.filter(a=>a.present).length/todayAtt.length*100):0;
-  return `<div class="page-head"><div><h1>Good afternoon 👋</h1><div class="subtitle">A live view of ${esc(profile?.organizations?.name||'your coaching center')}.</div></div><div class="actions"><button class="btn btn-secondary" onclick="refreshData(this)">↻ Refresh</button><button class="btn btn-primary" onclick="openStudentModal()">＋ Add student</button></div></div><div class="grid grid-4">${stat('Students',total,`${atRisk} need attention`,'◉')}${stat('Today attendance',`${todayPct}%`,todayAtt.length?`${todayAtt.length} records`:'No records yet','✓')}${stat('Collected',money(collected),`${data.payments.length} payments`,'৳')}${stat('Outstanding',money(outstanding),'current month estimate','!')}</div><div class="grid grid-2" style="margin-top:18px"><div class="card"><div style="display:flex;justify-content:space-between;align-items:flex-start"><div><h2>Collection activity</h2><div class="subtitle">Recent payment volume</div></div><span class="badge badge-blue">Live</span></div><div class="chart">${collectionBars()}</div></div><div class="card"><div style="display:flex;justify-content:space-between;align-items:center"><div><h2>Students needing attention</h2><div class="subtitle">Attendance, results or fees</div></div><span class="badge badge-danger">${atRisk}</span></div><div class="list" style="margin-top:12px">${data.students.filter(s=>riskFor(s)==='At Risk').slice(0,5).map(s=>`<div class="list-item"><div><strong>${esc(s.name)}</strong><div class="subtitle">${esc(s.batches?.name||'Unassigned')} • ${s.attendancePct}% attendance</div></div><span class="badge badge-danger">${s.latestResult||0}%</span></div>`).join('')||'<div class="empty">No students need attention.</div>'}</div></div></div><div class="grid grid-3" style="margin-top:18px"><div class="card"><h2>Upcoming exams</h2><div class="list" style="margin-top:10px">${data.exams.slice(0,4).map(e=>`<div class="list-item"><div><strong>${esc(e.name)}</strong><div class="subtitle">${esc(e.subject||'')} • ${e.exam_date||'No date'}</div></div><span class="badge badge-blue">${e.total_marks}</span></div>`).join('')||'<div class="empty">No exams yet.</div>'}</div></div><div class="card"><h2>Recent payments</h2><div class="list" style="margin-top:10px">${data.payments.slice(0,4).map(p=>`<div class="list-item"><div><strong>${esc(p.students?.name||'Student')}</strong><div class="subtitle">${esc(p.payment_method)} • ${new Date(p.paid_at).toLocaleDateString('en-BD')}</div></div><strong>${money(p.amount)}</strong></div>`).join('')||'<div class="empty">No payments yet.</div>'}</div></div><div class="card dark"><h2>EduFlow health</h2><div class="subtitle" style="color:#91a8bc;margin-top:4px">Everything is cloud-backed in this release.</div><div class="list" style="margin-top:12px"><div class="list-item"><span>Authentication</span><span class="badge badge-success">Connected</span></div><div class="list-item"><span>Database</span><span class="badge badge-success">Connected</span></div><div class="list-item"><span>Workspace</span><span class="badge badge-blue">Private</span></div></div></div></div>`;
+function toast(message) {
+  const old = document.querySelector('.toast');
+  if (old) old.remove();
+  const el = document.createElement('div');
+  el.className = 'toast';
+  el.textContent = message;
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 2600);
 }
-function collectionBars(){ const days=[...new Set(data.payments.slice(0,7).map(p=>p.paid_at?.slice(5,10)).filter(Boolean))].slice(0,7).reverse(); if(!days.length)return '<div class="empty" style="width:100%">No payment activity yet.</div>'; const vals=days.map(d=>data.payments.filter(p=>p.paid_at?.slice(5,10)===d).reduce((a,p)=>a+Number(p.amount||0),0)); const max=Math.max(...vals,1); return days.map((d,i)=>`<div class="bar" style="height:${Math.max(10,vals[i]/max*100)}%"><b>${money(vals[i])}</b><span>${d}</span></div>`).join('');}
-async function refreshData(btn){setBusy(btn,true);try{await loadAll();render();toast('Data refreshed.')}catch(e){toast(e.message)}finally{setBusy(btn,false,'↻ Refresh');}}
 
-function students(){return `<div class="page-head"><div><h1>Students</h1><div class="subtitle">Admissions, profiles, fees and performance.</div></div><div class="actions"><input class="search" id="studentSearch" oninput="filterStudents(this.value)" placeholder="Search name, phone or ID…"><button class="btn btn-primary" onclick="openStudentModal()">＋ Add student</button></div></div><div class="card"><div class="table-wrap"><table><thead><tr><th>Student</th><th>Batch</th><th>Phone</th><th>Attendance</th><th>Latest result</th><th>Fees</th><th>Status</th><th>Actions</th></tr></thead><tbody id="studentRows">${studentRows(data.students)}</tbody></table></div></div>`;}
-function studentRows(list){return list.map(s=>{const risk=riskFor(s);return `<tr><td><strong>${esc(s.name)}</strong><div class="subtitle">${esc(s.student_code)} • ${esc(s.guardian_name||'No guardian')}</div></td><td>${esc(s.batches?.name||'Unassigned')}</td><td>${esc(s.phone||'—')}</td><td>${s.attendancePct}%</td><td>${s.latestResult||0}%</td><td>${money(s.paid)} / ${money(s.monthly_fee)}</td><td><span class="badge ${risk==='At Risk'?'badge-danger':'badge-success'}">${risk}</span></td><td><div class="actions"><button class="btn btn-secondary btn-sm" onclick="viewStudent('${s.id}')">View</button><button class="btn btn-secondary btn-sm" onclick="editStudent('${s.id}')">Edit</button><button class="btn btn-danger btn-sm" onclick="deleteStudent('${s.id}')">Delete</button></div></td></tr>`}).join('')||'<tr><td colspan="8"><div class="empty">No students yet.</div></td></tr>';}
-function filterStudents(q){const n=String(q||'').toLowerCase();const list=data.students.filter(s=>(`${s.name} ${s.phone||''} ${s.student_code} ${s.guardian_name||''} ${s.batches?.name||''}`).toLowerCase().includes(n));document.getElementById('studentRows').innerHTML=studentRows(list);}
-function openStudentModal(student=null){const edit=!!student;openModal(edit?'Edit student':'Add student',`<div class="form-grid"><div class="field"><label>Full name</label><input id="f_name" value="${esc(student?.name||'')}"></div><div class="field"><label>Student ID</label><input id="f_code" value="${esc(student?.student_code||'ST-'+Date.now().toString().slice(-6))}" ${edit?'disabled':''}></div><div class="field"><label>Phone</label><input id="f_phone" value="${esc(student?.phone||'')}"></div><div class="field"><label>Guardian name</label><input id="f_guardian" value="${esc(student?.guardian_name||'')}"></div><div class="field"><label>Guardian phone</label><input id="f_guardian_phone" value="${esc(student?.guardian_phone||'')}"></div><div class="field"><label>Batch</label><select id="f_batch"><option value="">Unassigned</option>${data.batches.map(b=>`<option value="${b.id}" ${student?.batch_id===b.id?'selected':''}>${esc(b.name)}</option>`).join('')}</select></div><div class="field"><label>Monthly fee</label><input id="f_fee" type="number" min="0" value="${Number(student?.monthly_fee||0)}"></div></div><div class="modal-actions"><button class="btn btn-secondary" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="saveStudent('${student?.id||''}')">${edit?'Save changes':'Create student'}</button></div>`);}
-async function saveStudent(id){try{const payload={organization_id:orgId(),name:document.getElementById('f_name').value.trim(),student_code:document.getElementById('f_code').value.trim(),phone:document.getElementById('f_phone').value.trim()||null,guardian_name:document.getElementById('f_guardian').value.trim()||null,guardian_phone:document.getElementById('f_guardian_phone').value.trim()||null,batch_id:document.getElementById('f_batch').value||null,monthly_fee:Number(document.getElementById('f_fee').value||0)};if(!payload.name||!payload.student_code)throw new Error('Name and student ID are required.');const q=id?table('students').update(payload).eq('id',id).eq('organization_id',orgId()):table('students').insert(payload);const {error}=await q;if(error)throw error;closeModal();await loadAll();render();toast(id?'Student updated.':'Student created.');}catch(e){toast(e.message)}}
-async function deleteStudent(id){const s=data.students.find(x=>x.id===id);if(!s||!confirm(`Delete ${s.name}? This also removes their attendance, results and payments.`))return;try{for(const t of ['results','attendance','payments']){const {error}=await table(t).delete().eq('student_id',id).eq('organization_id',orgId());if(error)throw error;}const {error}=await table('students').delete().eq('id',id).eq('organization_id',orgId());if(error)throw error;await loadAll();render();toast('Student deleted.');}catch(e){toast(e.message)}}
-function viewStudent(id){const s=data.students.find(x=>x.id===id);if(!s)return;const results=data.results.filter(r=>r.student_id===id).slice(0,6);openModal('Student profile',`<div class="grid grid-2"><div class="card"><div class="section-title">Profile</div><div><strong>${esc(s.name)}</strong><div class="subtitle">${esc(s.student_code)} • ${esc(s.batches?.name||'Unassigned')}</div></div><div class="list" style="margin-top:10px"><div class="list-item"><span>Phone</span><strong>${esc(s.phone||'—')}</strong></div><div class="list-item"><span>Guardian</span><strong>${esc(s.guardian_name||'—')}</strong></div><div class="list-item"><span>Monthly fee</span><strong>${money(s.monthly_fee)}</strong></div><div class="list-item"><span>Paid</span><strong>${money(s.paid)}</strong></div></div></div><div class="card"><div class="section-title">Performance</div><div class="grid grid-2"><div><div class="subtitle">Attendance</div><strong style="font-size:28px">${s.attendancePct}%</strong></div><div><div class="subtitle">Latest result</div><strong style="font-size:28px">${s.latestResult||0}%</strong></div></div><div class="notice" style="margin-top:14px">Status: <strong>${riskFor(s)}</strong></div></div></div><div class="card" style="margin-top:16px"><div class="section-title">Recent results</div>${results.map(r=>`<div class="list-item"><span>${esc(r.exams?.name||'Exam')}</span><strong>${r.marks}</strong></div>`).join('')||'<div class="empty">No results yet.</div>'}</div>`);}
-function editStudent(id){const s=data.students.find(x=>x.id===id);if(s)openStudentModal(s)}
+function showError(err) {
+  console.error(err);
+  toast(err?.message || String(err));
+}
 
-function batches(){return `<div class="page-head"><div><h1>Batches</h1><div class="subtitle">Schedules, rooms, teachers and enrollment.</div></div><button class="btn btn-primary" onclick="openBatchModal()">＋ New batch</button></div><div class="grid grid-2">${data.batches.map(b=>`<div class="card"><div style="display:flex;justify-content:space-between;gap:10px"><div><span class="badge badge-blue">${esc(b.subject||'General')}</span><h2 style="margin-top:9px">${esc(b.name)}</h2><div class="subtitle">${esc(b.teacher_name||'No teacher')}</div></div><strong>${data.students.filter(s=>s.batch_id===b.id).length} students</strong></div><div class="grid grid-2" style="margin-top:18px"><div><div class="subtitle">Time</div><strong>${esc(b.class_time||'—')}</strong></div><div><div class="subtitle">Room</div><strong>${esc(b.room||'—')}</strong></div></div><div class="actions" style="margin-top:18px"><button class="btn btn-secondary btn-sm" onclick="editBatch('${b.id}')">Edit</button><button class="btn btn-danger btn-sm" onclick="deleteBatch('${b.id}')">Delete</button></div></div>`).join('')||'<div class="empty">No batches yet.</div>'}</div>`;}
-function openBatchModal(batch=null){openModal(batch?'Edit batch':'New batch',`<div class="form-grid"><div class="field"><label>Batch name</label><input id="b_name" value="${esc(batch?.name||'')}"></div><div class="field"><label>Subject</label><input id="b_subject" value="${esc(batch?.subject||'')}"></div><div class="field"><label>Teacher</label><select id="b_teacher"><option value="">No teacher</option>${data.teachers.map(t=>`<option value="${esc(t.name)}" ${batch?.teacher_name===t.name?'selected':''}>${esc(t.name)}</option>`).join('')}</select></div><div class="field"><label>Class time</label><input id="b_time" value="${esc(batch?.class_time||'08:00 AM')}"></div><div class="field"><label>Room</label><input id="b_room" value="${esc(batch?.room||'Room 101')}"></div></div><div class="modal-actions"><button class="btn btn-secondary" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="saveBatch('${batch?.id||''}')">${batch?'Save changes':'Create batch'}</button></div>`);}
-async function saveBatch(id){try{const payload={organization_id:orgId(),name:document.getElementById('b_name').value.trim(),subject:document.getElementById('b_subject').value.trim()||null,teacher_name:document.getElementById('b_teacher').value||null,class_time:document.getElementById('b_time').value.trim()||null,room:document.getElementById('b_room').value.trim()||null};if(!payload.name)throw new Error('Batch name is required.');const {error}=id?await table('batches').update(payload).eq('id',id).eq('organization_id',orgId()):await table('batches').insert(payload);if(error)throw error;closeModal();await loadAll();render();toast(id?'Batch updated.':'Batch created.')}catch(e){toast(e.message)}}
-function editBatch(id){const b=data.batches.find(x=>x.id===id);if(b)openBatchModal(b)}
-async function deleteBatch(id){const count=data.students.filter(s=>s.batch_id===id).length;if(count&& !confirm(`This batch has ${count} students. Remove the batch and unassign those students?`))return;try{if(count){const {error:e}=await table('students').update({batch_id:null}).eq('batch_id',id).eq('organization_id',orgId());if(e)throw e;}const {error}=await table('batches').delete().eq('id',id).eq('organization_id',orgId());if(error)throw error;await loadAll();render();toast('Batch deleted.')}catch(e){toast(e.message)}}
+function authView(message='') {
+  document.body.innerHTML = `
+    <div style="min-height:100vh;background:#f5f7fb;display:grid;place-items:center;padding:20px">
+      <div class="card" style="width:min(480px,100%);padding:30px">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:24px">
+          <div class="logo">E</div><div><h2 style="margin:0">EduFlow</h2><div class="subtitle">Bangladesh • Coaching Center OS</div></div>
+        </div>
+        <h1 style="font-size:25px;margin-bottom:6px">${authMode==='signin'?'Welcome back':'Create your coaching center'}</h1>
+        <div class="subtitle" style="margin-bottom:18px">${authMode==='signin'?'Sign in to your EduFlow workspace.':'Create a private cloud workspace in a few seconds.'}</div>
+        ${message ? `<div class="notice" style="margin-bottom:14px">${esc(message)}</div>` : ''}
+        ${authMode==='signup'?`
+          <div class="field"><label>Your name</label><input id="auth_name" placeholder="e.g. Minhaz EsmAil"></div>
+          <div class="field" style="margin-top:12px"><label>Coaching center name</label><input id="auth_org" placeholder="e.g. ABC Coaching Center"></div>
+        `:''}
+        <div class="field" style="margin-top:12px"><label>Email</label><input id="auth_email" type="email" autocomplete="email" placeholder="you@example.com"></div>
+        <div class="field" style="margin-top:12px"><label>Password</label><input id="auth_password" type="password" autocomplete="${authMode==='signin'?'current-password':'new-password'}" placeholder="At least 6 characters"></div>
+        <div class="actions" style="margin-top:18px">
+          <button class="btn btn-primary" style="flex:1" onclick="${authMode==='signin'?'signIn()':'signUp()'}">${authMode==='signin'?'Sign in':'Create account'}</button>
+          <button class="btn btn-secondary" onclick="toggleAuth()">${authMode==='signin'?'Create account':'Back to sign in'}</button>
+        </div>
+        <div class="subtitle" style="font-size:12px;margin-top:15px">Your student and financial data is stored in your private cloud workspace.</div>
+      </div>
+    </div>`;
+}
 
-function attendance(){const rows=data.students.filter(s=>selectedBatchId==='all'||s.batch_id===selectedBatchId);const dayRows=data.attendance.filter(a=>a.attendance_date===currentDate);return `<div class="page-head"><div><h1>Attendance</h1><div class="subtitle">Mark presence by batch and save the daily roll call.</div></div><div class="actions"><input class="search" style="width:160px" type="date" value="${currentDate}" onchange="changeAttendanceDate(this.value)"><select class="search" style="width:220px" onchange="changeBatch(this.value)"><option value="all">All batches</option>${data.batches.map(b=>`<option value="${b.id}" ${selectedBatchId===b.id?'selected':''}>${esc(b.name)}</option>`).join('')}</select><button class="btn btn-primary" onclick="saveAttendance()">Save attendance</button></div></div><div class="card"><div class="notice">Today: <strong>${currentDate}</strong>. Tick students who are present.</div><div class="table-wrap" style="margin-top:14px"><table><thead><tr><th>Student</th><th>Batch</th><th>Attendance</th><th>Present today</th></tr></thead><tbody>${rows.map(s=>{const rec=dayRows.find(a=>a.student_id===s.id);return `<tr><td><strong>${esc(s.name)}</strong><div class="subtitle">${esc(s.student_code)}</div></td><td>${esc(s.batches?.name||'Unassigned')}</td><td>${s.attendancePct}%</td><td><label class="check-row"><input class="att-box" type="checkbox" data-student="${s.id}" ${rec?rec.present?'checked':'':'checked'}> Present</label></td></tr>`}).join('')||'<tr><td colspan="4"><div class="empty">No students in this view.</div></td></tr>'}</tbody></table></div></div>`;}
-function changeAttendanceDate(v){currentDate=v||new Date().toISOString().slice(0,10);render()} function changeBatch(v){selectedBatchId=v;render()}
-async function saveAttendance(){const boxes=[...document.querySelectorAll('.att-box')];try{for(const box of boxes){const sid=box.dataset.student,present=box.checked;const existing=data.attendance.find(a=>a.student_id===sid&&a.attendance_date===currentDate);if(existing){const {error}=await table('attendance').update({present}).eq('id',existing.id).eq('organization_id',orgId());if(error)throw error;}else{const {error}=await table('attendance').insert({organization_id:orgId(),student_id:sid,attendance_date:currentDate,present});if(error)throw error;}}await loadAll();render();toast('Attendance saved.')}catch(e){toast(e.message)}}
+function toggleAuth() {
+  authMode = authMode === 'signin' ? 'signup' : 'signin';
+  authView();
+}
 
-function fees(){const collected=data.payments.reduce((a,p)=>a+Number(p.amount||0),0), outstanding=data.students.reduce((a,s)=>a+Math.max(0,Number(s.monthly_fee||0)-s.paid),0);return `<div class="page-head"><div><h1>Fees & Payments</h1><div class="subtitle">Record payments and keep receipts in one place.</div></div><button class="btn btn-primary" onclick="openPaymentModal()">＋ Record payment</button></div><div class="grid grid-3">${stat('Collected',money(collected),`${data.payments.length} payments`,'৳')}${stat('Outstanding',money(outstanding),'estimated current dues','!')}${stat('Average payment',money(data.payments.length?collected/data.payments.length:0),'across all receipts','↗')}</div><div class="card" style="margin-top:18px"><div class="table-wrap"><table><thead><tr><th>Receipt</th><th>Student</th><th>Amount</th><th>Method</th><th>Date</th><th>Actions</th></tr></thead><tbody>${data.payments.map(p=>`<tr><td><strong>${esc(p.receipt_no||p.id.slice(0,8))}</strong></td><td>${esc(p.students?.name||'Student')}</td><td>${money(p.amount)}</td><td>${esc(p.payment_method)}</td><td>${new Date(p.paid_at).toLocaleDateString('en-BD')}</td><td><button class="btn btn-secondary btn-sm" onclick="receipt('${p.id}')">Receipt</button><button class="btn btn-danger btn-sm" onclick="deletePayment('${p.id}')">Delete</button></td></tr>`).join('')||'<tr><td colspan="6"><div class="empty">No payments yet.</div></td></tr>'}</tbody></table></div></div>`;}
-function openPaymentModal(){openModal('Record payment',`<div class="form-grid"><div class="field"><label>Student</label><select id="p_student">${data.students.map(s=>`<option value="${s.id}">${esc(s.name)} — ${money(Math.max(0,Number(s.monthly_fee||0)-s.paid))} due</option>`).join('')}</select></div><div class="field"><label>Amount (BDT)</label><input id="p_amount" type="number" min="1" value="1500"></div><div class="field"><label>Payment method</label><select id="p_method"><option>bKash</option><option>Nagad</option><option>Cash</option><option>Bank</option></select></div><div class="field"><label>Receipt number</label><input id="p_receipt" value="RCP-${Date.now().toString().slice(-6)}"></div></div><div class="modal-actions"><button class="btn btn-secondary" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="savePayment()">Save payment</button></div>`);}
-async function savePayment(){try{const sid=document.getElementById('p_student').value,amount=Number(document.getElementById('p_amount').value||0);if(!sid||amount<=0)throw new Error('Select a student and enter a valid amount.');const {error}=await table('payments').insert({organization_id:orgId(),student_id:sid,amount,payment_method:document.getElementById('p_method').value,receipt_no:document.getElementById('p_receipt').value.trim()||null,paid_at:new Date().toISOString()});if(error)throw error;closeModal();await loadAll();render();toast('Payment recorded.')}catch(e){toast(e.message)}}
-async function deletePayment(id){if(!confirm('Delete this payment?'))return;try{const {error}=await table('payments').delete().eq('id',id).eq('organization_id',orgId());if(error)throw error;await loadAll();render();toast('Payment deleted.')}catch(e){toast(e.message)}}
-function receipt(id){const p=data.payments.find(x=>x.id===id);if(!p)return;openModal('Payment receipt',`<div class="card dark"><div style="display:flex;justify-content:space-between"><div><div class="subtitle" style="color:#88a5bb">EduFlow receipt</div><h2 style="margin-top:4px">${esc(p.receipt_no||p.id.slice(0,8))}</h2></div><div style="font-size:30px;font-weight:900">${money(p.amount)}</div></div><div class="list" style="margin-top:14px"><div class="list-item"><span>Student</span><strong>${esc(p.students?.name||'Student')}</strong></div><div class="list-item"><span>Method</span><strong>${esc(p.payment_method)}</strong></div><div class="list-item"><span>Date</span><strong>${new Date(p.paid_at).toLocaleString('en-BD')}</strong></div></div></div><div class="modal-actions"><button class="btn btn-primary" onclick="window.print()">Print</button><button class="btn btn-secondary" onclick="closeModal()">Close</button></div>`)}
+async function signUp() {
+  try {
+    const name = $('auth_name').value.trim();
+    const org = $('auth_org').value.trim();
+    const email = $('auth_email').value.trim();
+    const password = $('auth_password').value;
+    if (!name || !org || !email || password.length < 6) throw new Error('Please complete all fields. Password must be at least 6 characters.');
+    const {data, error} = await supa().auth.signUp({
+      email, password,
+      options: { data: { full_name:name, organization_name:org } }
+    });
+    if (error) throw error;
+    if (!data.session) {
+      authView('Account created. Please check your email to confirm your account, then sign in.');
+      return;
+    }
+    await boot();
+  } catch (e) { showError(e); }
+}
 
-function exams(){return `<div class="page-head"><div><h1>Exams & Results</h1><div class="subtitle">Create exams, enter marks, update marks and publish results.</div></div><button class="btn btn-primary" onclick="openExamModal()">＋ Create exam</button></div><div class="grid grid-2">${data.exams.map(e=>`<div class="card"><div style="display:flex;justify-content:space-between;gap:12px"><div><span class="badge badge-blue">${esc(e.subject||'General')}</span><h2 style="margin-top:9px">${esc(e.name)}</h2><div class="subtitle">${e.exam_date||'No date'} • ${e.total_marks} marks</div></div><div class="actions"><button class="btn btn-primary btn-sm" onclick="openMarksModal('${e.id}')">Enter marks</button><button class="btn btn-secondary btn-sm" onclick="editExam('${e.id}')">Edit</button><button class="btn btn-danger btn-sm" onclick="deleteExam('${e.id}')">Delete</button></div></div><div class="grid grid-3" style="margin-top:18px"><div><div class="subtitle">Students</div><strong>${data.students.length}</strong></div><div><div class="subtitle">Marks entered</div><strong>${data.results.filter(r=>r.exam_id===e.id).length}</strong></div><div><div class="subtitle">Top score</div><strong>${Math.max(0,...data.results.filter(r=>r.exam_id===e.id).map(r=>Number(r.marks||0)))}</strong></div></div></div>`).join('')||'<div class="empty">No exams yet.</div>'}</div><div class="card" style="margin-top:18px"><div class="section-title">Recent performance</div><div class="table-wrap"><table><thead><tr><th>Student</th><th>Exam</th><th>Marks</th><th>%</th></tr></thead><tbody>${data.results.slice(0,12).map(r=>`<tr><td>${esc(r.students?.name||'Student')}</td><td>${esc(r.exams?.name||'Exam')}</td><td>${r.marks}</td><td>${Math.round(Number(r.marks)/Number(r.exams?.total_marks||100)*100)}%</td></tr>`).join('')||'<tr><td colspan="4"><div class="empty">No results yet.</div></td></tr>'}</tbody></table></div></div>`;}
-function openExamModal(exam=null){openModal(exam?'Edit exam':'Create exam',`<div class="form-grid"><div class="field"><label>Exam name</label><input id="e_name" value="${esc(exam?.name||'')}"></div><div class="field"><label>Subject</label><input id="e_subject" value="${esc(exam?.subject||'')}"></div><div class="field"><label>Date</label><input id="e_date" type="date" value="${esc(exam?.exam_date||currentDate)}"></div><div class="field"><label>Total marks</label><input id="e_total" type="number" min="1" value="${Number(exam?.total_marks||100)}"></div></div><div class="modal-actions"><button class="btn btn-secondary" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="saveExam('${exam?.id||''}')">${exam?'Save changes':'Create exam'}</button></div>`);}
-async function saveExam(id){try{const payload={organization_id:orgId(),name:document.getElementById('e_name').value.trim(),subject:document.getElementById('e_subject').value.trim()||null,exam_date:document.getElementById('e_date').value||null,total_marks:Number(document.getElementById('e_total').value||100)};if(!payload.name||payload.total_marks<=0)throw new Error('Exam name and total marks are required.');const {error}=id?await table('exams').update(payload).eq('id',id).eq('organization_id',orgId()):await table('exams').insert(payload);if(error)throw error;closeModal();await loadAll();render();toast(id?'Exam updated.':'Exam created.')}catch(e){toast(e.message)}}
-function editExam(id){const e=data.exams.find(x=>x.id===id);if(e)openExamModal(e)}
-async function deleteExam(id){if(!confirm('Delete this exam and all of its marks?'))return;try{const {error:rErr}=await table('results').delete().eq('exam_id',id).eq('organization_id',orgId());if(rErr)throw rErr;const {error}=await table('exams').delete().eq('id',id).eq('organization_id',orgId());if(error)throw error;await loadAll();render();toast('Exam deleted.')}catch(e){toast(e.message)}}
-function openMarksModal(examId){const exam=data.exams.find(e=>e.id===examId);if(!exam)return;const rows=data.students.map(s=>{const r=data.results.find(x=>x.exam_id===examId&&x.student_id===s.id);return `<tr><td><strong>${esc(s.name)}</strong><div class="subtitle">${esc(s.student_code)}</div></td><td>${esc(s.batches?.name||'Unassigned')}</td><td><input class="mark-input" data-student="${s.id}" type="number" min="0" max="${Number(exam.total_marks)}" value="${r?.marks??''}" style="width:130px"></td></tr>`}).join('');openModal(`Enter marks — ${esc(exam.name)}`,`<div class="notice">Total marks: <strong>${exam.total_marks}</strong>. You can save all students at once.</div><div class="table-wrap" style="margin-top:14px"><table><thead><tr><th>Student</th><th>Batch</th><th>Marks</th></tr></thead><tbody>${rows}</tbody></table></div><div class="modal-actions"><button class="btn btn-secondary" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="saveMarks('${examId}')">Save marks</button></div>`)}
-async function saveMarks(examId){const exam=data.exams.find(e=>e.id===examId),inputs=[...document.querySelectorAll('.mark-input')];try{for(const input of inputs){const studentId=input.dataset.student;const value=input.value.trim();const existing=data.results.find(r=>r.exam_id===examId&&r.student_id===studentId);if(value===''){if(existing){const {error}=await table('results').delete().eq('id',existing.id).eq('organization_id',orgId());if(error)throw error;}continue;}const marks=Number(value);if(marks<0||marks>Number(exam.total_marks))throw new Error(`Marks must be between 0 and ${exam.total_marks}.`);if(existing){const {error}=await table('results').update({marks}).eq('id',existing.id).eq('organization_id',orgId());if(error)throw error;}else{const {error}=await table('results').insert({organization_id:orgId(),exam_id:examId,student_id:studentId,marks});if(error)throw error;}}closeModal();await loadAll();render();toast('Marks saved successfully.')}catch(e){toast(e.message)}}
+async function signIn() {
+  try {
+    const email = $('auth_email').value.trim();
+    const password = $('auth_password').value;
+    if (!email || !password) throw new Error('Enter your email and password.');
+    const {error} = await supa().auth.signInWithPassword({email,password});
+    if (error) throw error;
+    await boot();
+  } catch (e) { showError(e); }
+}
 
-function teachers(){return `<div class="page-head"><div><h1>Teachers</h1><div class="subtitle">Teacher directory, subject and class rate.</div></div><button class="btn btn-primary" onclick="openTeacherModal()">＋ Add teacher</button></div><div class="grid grid-3">${data.teachers.map(t=>`<div class="card"><div style="display:flex;gap:12px;align-items:center"><div class="iconbox">${esc((t.name||'?').slice(0,1))}</div><div><h2>${esc(t.name)}</h2><div class="subtitle">${esc(t.subject||'')}</div></div></div><div class="grid grid-2" style="margin-top:18px"><div><div class="subtitle">Rate / class</div><strong>${money(t.rate_per_class)}</strong></div><div><div class="subtitle">Batches</div><strong>${data.batches.filter(b=>b.teacher_name===t.name).length}</strong></div></div><div class="actions" style="margin-top:16px"><button class="btn btn-secondary btn-sm" onclick="editTeacher('${t.id}')">Edit</button><button class="btn btn-danger btn-sm" onclick="deleteTeacher('${t.id}')">Delete</button></div></div>`).join('')||'<div class="empty">No teachers yet.</div>'}</div>`;}
-function openTeacherModal(t=null){openModal(t?'Edit teacher':'Add teacher',`<div class="form-grid"><div class="field"><label>Name</label><input id="t_name" value="${esc(t?.name||'')}"></div><div class="field"><label>Subject</label><input id="t_subject" value="${esc(t?.subject||'')}"></div><div class="field"><label>Phone</label><input id="t_phone" value="${esc(t?.phone||'')}"></div><div class="field"><label>Rate per class</label><input id="t_rate" type="number" min="0" value="${Number(t?.rate_per_class||0)}"></div></div><div class="modal-actions"><button class="btn btn-secondary" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="saveTeacher('${t?.id||''}')">${t?'Save changes':'Add teacher'}</button></div>`)}
-async function saveTeacher(id){try{const payload={organization_id:orgId(),name:document.getElementById('t_name').value.trim(),subject:document.getElementById('t_subject').value.trim()||null,phone:document.getElementById('t_phone').value.trim()||null,rate_per_class:Number(document.getElementById('t_rate').value||0)};if(!payload.name)throw new Error('Teacher name is required.');const {error}=id?await table('teachers').update(payload).eq('id',id).eq('organization_id',orgId()):await table('teachers').insert(payload);if(error)throw error;closeModal();await loadAll();render();toast(id?'Teacher updated.':'Teacher added.')}catch(e){toast(e.message)}}
-function editTeacher(id){const t=data.teachers.find(x=>x.id===id);if(t)openTeacherModal(t)}
-async function deleteTeacher(id){const t=data.teachers.find(x=>x.id===id);if(!t||!confirm(`Delete ${t.name}? Batches will keep their current teacher text.`))return;try{const {error}=await table('teachers').delete().eq('id',id).eq('organization_id',orgId());if(error)throw error;await loadAll();render();toast('Teacher deleted.')}catch(e){toast(e.message)}}
+async function logout() {
+  await supa().auth.signOut();
+  session = null; profile = null;
+  dataset = {students:[], batches:[], teachers:[], payments:[], exams:[], results:[], attendance:[], notices:[]};
+  authMode = 'signin';
+  authView('You have been signed out.');
+}
 
-function notices(){return `<div class="page-head"><div><h1>Notices</h1><div class="subtitle">Create and manage announcements for your center.</div></div><button class="btn btn-primary" onclick="openNoticeModal()">＋ New notice</button></div><div class="grid grid-2"><div class="card dark"><h2>Communication center</h2><div class="list" style="margin-top:12px"><div class="list-item"><span>In-app notices</span><span class="badge badge-success">Ready</span></div><div class="list-item"><span>SMS integration</span><span class="badge badge-blue">Next step</span></div><div class="list-item"><span>WhatsApp</span><span class="badge badge-blue">Next step</span></div></div></div><div class="card"><h2>Recent notices</h2><div class="list" style="margin-top:8px">${data.notices.slice(0,8).map(n=>`<div class="list-item"><div><strong>${esc(n.title)}</strong><div class="subtitle">${new Date(n.created_at).toLocaleString('en-BD')}</div></div><button class="btn btn-danger btn-sm" onclick="deleteNotice('${n.id}')">Delete</button></div>`).join('')||'<div class="empty">No notices yet.</div>'}</div></div></div>`;}
-function openNoticeModal(){openModal('New notice',`<div class="field"><label>Title</label><input id="n_title" placeholder="Important announcement"></div><div class="field" style="margin-top:12px"><label>Message</label><textarea id="n_body" rows="7" placeholder="Write your announcement…"></textarea></div><div class="modal-actions"><button class="btn btn-secondary" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="saveNotice()">Publish notice</button></div>`)}
-async function saveNotice(){try{const title=document.getElementById('n_title').value.trim(),body=document.getElementById('n_body').value.trim();if(!title||!body)throw new Error('Title and message are required.');const {error}=await table('notices').insert({organization_id:orgId(),title,body});if(error)throw error;closeModal();await loadAll();render();toast('Notice published.')}catch(e){toast(e.message)}}
-async function deleteNotice(id){if(!confirm('Delete this notice?'))return;try{const {error}=await table('notices').delete().eq('id',id).eq('organization_id',orgId());if(error)throw error;await loadAll();render();toast('Notice deleted.')}catch(e){toast(e.message)}}
+async function loadProfile() {
+  const {data, error} = await supa().from('profiles').select('id,organization_id,full_name,role,organizations(name,phone,district)').eq('id', session.user.id).maybeSingle();
+  if (error) throw error;
+  if (!data?.organization_id) throw new Error('Your account has no coaching-center workspace yet. Please contact support.');
+  profile = data;
+}
 
-function settings(){const o=profile?.organizations||{};return `<div class="page-head"><div><h1>Settings</h1><div class="subtitle">Manage your coaching center profile.</div></div></div><div class="grid grid-2"><div class="card"><h2>Institution profile</h2><div class="form-grid" style="margin-top:16px"><div class="field"><label>Center name</label><input id="s_name" value="${esc(o.name||'')}"></div><div class="field"><label>Phone</label><input id="s_phone" value="${esc(o.phone||'')}"></div><div class="field"><label>District</label><input id="s_district" value="${esc(o.district||'')}" placeholder="Dhaka"></div><div class="field"><label>Currency</label><input value="BDT (৳)" disabled></div></div><button class="btn btn-primary" style="margin-top:18px" onclick="saveSettings()">Save settings</button></div><div class="card dark"><h2>Workspace</h2><div class="subtitle" style="color:#8ea4b8;margin-top:5px">Your current EduFlow workspace is cloud-backed and protected by Supabase Row Level Security.</div><div class="list" style="margin-top:16px"><div class="list-item"><span>Role</span><strong>${esc(profile?.role||'owner')}</strong></div><div class="list-item"><span>Students</span><strong>${data.students.length}</strong></div><div class="list-item"><span>Batches</span><strong>${data.batches.length}</strong></div><div class="list-item"><span>Teachers</span><strong>${data.teachers.length}</strong></div></div></div></div>`;}
-async function saveSettings(){try{const name=document.getElementById('s_name').value.trim();if(!name)throw new Error('Center name is required.');const {error}=await table('organizations').update({name,phone:document.getElementById('s_phone').value.trim()||null,district:document.getElementById('s_district').value.trim()||null}).eq('id',orgId());if(error)throw error;await bootstrap();toast('Settings saved.')}catch(e){toast(e.message)}}
+async function loadData() {
+  const o = orgId();
+  const results = await Promise.all([
+    supa().from('students').select('*,batches(name)').eq('organization_id',o).order('created_at',{ascending:false}),
+    supa().from('batches').select('*').eq('organization_id',o).order('created_at',{ascending:false}),
+    supa().from('teachers').select('*').eq('organization_id',o).order('created_at',{ascending:false}),
+    supa().from('payments').select('*,students(name,student_code)').eq('organization_id',o).order('paid_at',{ascending:false}),
+    supa().from('exams').select('*').eq('organization_id',o).order('exam_date',{ascending:false,nullsFirst:false}),
+    supa().from('results').select('*,students(name,student_code),exams(name,total_marks)').eq('organization_id',o).order('created_at',{ascending:false}),
+    supa().from('attendance').select('*').eq('organization_id',o).order('attendance_date',{ascending:false}),
+    supa().from('notices').select('*').eq('organization_id',o).order('created_at',{ascending:false})
+  ]);
+  const labels = ['students','batches','teachers','payments','exams','results','attendance','notices'];
+  results.forEach((r,i)=>{ if (r.error) throw r.error; dataset[labels[i]] = r.data || []; });
+  enrich();
+}
 
-function openModal(title,body){closeModal();const el=document.createElement('div');el.id='modalRoot';el.className='modal-backdrop';el.innerHTML=`<div class="modal"><div class="modal-head"><h2>${title}</h2><button class="close" onclick="closeModal()">×</button></div><div class="modal-body">${body}</div></div>`;document.body.appendChild(el)}
-function closeModal(){document.getElementById('modalRoot')?.remove()}
-async function logout(){try{await ensureClient().auth.signOut();}finally{session=null;profile=null;data={students:[],batches:[],teachers:[],payments:[],exams:[],results:[],attendance:[],notices:[]};authShell();}}
+function enrich() {
+  dataset.students = dataset.students.map(s => {
+    const a = dataset.attendance.filter(x => x.student_id===s.id);
+    const pct = a.length ? Math.round(a.filter(x=>x.present).length/a.length*100) : 0;
+    const res = dataset.results.filter(x=>x.student_id===s.id);
+    const latest = res.length ? Number(res[0].marks || 0) / Number(res[0].exams?.total_marks || 100) * 100 : 0;
+    const paid = dataset.payments.filter(x=>x.student_id===s.id).reduce((n,x)=>n+Number(x.amount||0),0);
+    return {...s, attendancePct:pct, latestResult:Math.round(latest), paid};
+  });
+}
 
-window.addEventListener('load', bootstrap);
+function risk(s) {
+  return (s.attendancePct < 70 || s.latestResult < 50 || s.paid < Number(s.monthly_fee||0)) ? 'At Risk' : 'Healthy';
+}
+
+function layout() {
+  document.body.innerHTML = `
+    <div class="app">
+      <aside class="sidebar">
+        <div class="brand"><div class="logo">E</div><div><strong>EduFlow</strong><small>Bangladesh • Coaching OS</small></div></div>
+        <nav class="nav">
+          ${nav('dashboard','Dashboard','▦')}
+          ${nav('students','Students','♙')}
+          ${nav('batches','Batches','▤')}
+          ${nav('attendance','Attendance','✓')}
+          ${nav('fees','Fees & Payments','৳')}
+          ${nav('exams','Exams & Results','▣')}
+          ${nav('teachers','Teachers','♟')}
+          ${nav('notices','Notices','◈')}
+          ${nav('settings','Settings','⚙')}
+        </nav>
+        <div class="sidebar-bottom"><div class="subtitle" style="color:#9ca3af">Workspace</div><strong>${esc(profile?.organizations?.name||'My Coaching Center')}</strong></div>
+      </aside>
+      <main class="main">
+        <header class="topbar">
+          <strong>${pageTitle()}</strong>
+          <div class="right"><span class="subtitle">${esc(profile?.full_name||'Admin')}</span><button class="btn btn-secondary btn-sm" onclick="logout()">Sign out</button></div>
+        </header>
+        <section class="container" id="content"></section>
+      </main>
+    </div>`;
+  render();
+}
+
+function nav(id,label,ic){ return `<button class="${page===id?'active':''}" onclick="go('${id}')"><span>${ic}</span>${label}</button>`; }
+function pageTitle(){ return ({dashboard:'Dashboard',students:'Students',batches:'Batches',attendance:'Attendance',fees:'Fees & Payments',exams:'Exams & Results',teachers:'Teachers',notices:'Notices',settings:'Settings'})[page]; }
+function go(p){ page=p; render(); }
+
+function stat(label,value,note,ic){ return `<div class="card stat"><div><div class="label">${label}</div><div class="value">${value}</div><div class="subtitle">${note}</div></div><div class="iconbox">${ic}</div></div>`; }
+
+function render() {
+  const c = $('content');
+  if (!c) return;
+  const views = {dashboard,dashboard:dashboard,students,batches,attendance,fees,exams,teachers,notices,settings};
+  c.innerHTML = (views[page] || dashboard)();
+}
+
+function dashboard() {
+  const collected = dataset.payments.reduce((n,p)=>n+Number(p.amount||0),0);
+  const due = dataset.students.reduce((n,s)=>n+Math.max(0,Number(s.monthly_fee||0)-s.paid),0);
+  const atRisk = dataset.students.filter(s=>risk(s)==='At Risk').length;
+  const todayRecords = dataset.attendance.filter(a=>a.attendance_date===today());
+  const todayPct = todayRecords.length ? Math.round(todayRecords.filter(a=>a.present).length/todayRecords.length*100) : 0;
+  return `<div class="page-head"><div><h1>Good afternoon 👋</h1><div class="subtitle">Live overview for ${esc(profile.organizations?.name||'your coaching center')}.</div></div><button class="btn btn-primary" onclick="openStudent()">＋ Add student</button></div>
+  <div class="grid grid-4">
+    ${stat('Students',dataset.students.length,`${atRisk} need attention`,'♙')}
+    ${stat('Today attendance',todayPct+'%',todayRecords.length+' records','✓')}
+    ${stat('Collected',money(collected),dataset.payments.length+' payments','৳')}
+    ${stat('Outstanding',money(due),'current month estimate','!')}
+  </div>
+  <div class="grid grid-2" style="margin-top:18px">
+    <div class="card"><h2>Students needing attention</h2><div class="subtitle">Based on attendance, results and fees.</div>
+      <div class="list" style="margin-top:12px">${dataset.students.filter(s=>risk(s)==='At Risk').slice(0,6).map(s=>`<div class="list-item"><div><strong>${esc(s.name)}</strong><div class="subtitle">${esc(s.batches?.name||'Unassigned')} • ${s.attendancePct}% attendance</div></div><span class="badge badge-danger">${s.latestResult||0}%</span></div>`).join('')||'<div class="empty">No students need attention 🎉</div>'}</div>
+    </div>
+    <div class="card"><h2>Recent payments</h2><div class="subtitle">Latest collection activity.</div>
+      <div class="list" style="margin-top:12px">${dataset.payments.slice(0,6).map(p=>`<div class="list-item"><div><strong>${esc(p.students?.name||'Student')}</strong><div class="subtitle">${esc(p.payment_method)} • ${new Date(p.paid_at).toLocaleDateString('en-BD')}</div></div><strong>${money(p.amount)}</strong></div>`).join('')||'<div class="empty">No payments yet.</div>'}</div>
+    </div>
+  </div>
+  <div class="grid grid-3" style="margin-top:18px">
+    <div class="card"><h2>Batches</h2><div class="value" style="margin-top:10px">${dataset.batches.length}</div><div class="subtitle">active batches</div></div>
+    <div class="card"><h2>Teachers</h2><div class="value" style="margin-top:10px">${dataset.teachers.length}</div><div class="subtitle">teachers in workspace</div></div>
+    <div class="card"><h2>Upcoming exams</h2><div class="value" style="margin-top:10px">${dataset.exams.length}</div><div class="subtitle">exams created</div></div>
+  </div>`;
+}
+
+function students() {
+  return `<div class="page-head"><div><h1>Students</h1><div class="subtitle">Student records are stored in Supabase.</div></div><div class="actions"><input class="search" placeholder="Search…" oninput="filterRows(this.value)"><button class="btn btn-primary" onclick="openStudent()">＋ Add student</button></div></div>
+  <div class="card"><div class="table-wrap"><table><thead><tr><th>Student</th><th>Batch</th><th>Phone</th><th>Attendance</th><th>Latest result</th><th>Paid</th><th>Status</th><th></th></tr></thead><tbody id="studentRows">${studentRows(dataset.students)}</tbody></table></div></div>`;
+}
+function studentRows(list) {
+  return list.map(s=>`<tr><td><strong>${esc(s.name)}</strong><div class="subtitle">${esc(s.student_code)} • ${esc(s.guardian_name||'No guardian')}</div></td><td>${esc(s.batches?.name||'Unassigned')}</td><td>${esc(s.phone||'—')}</td><td>${s.attendancePct}%</td><td>${s.latestResult||0}%</td><td>${money(s.paid)} / ${money(s.monthly_fee)}</td><td><span class="badge ${risk(s)==='At Risk'?'badge-danger':'badge-success'}">${risk(s)}</span></td><td><button class="btn btn-secondary btn-sm" onclick="openStudent('${s.id}')">Edit</button></td></tr>`).join('') || '<tr><td colspan="8"><div class="empty">No students yet.</div></td></tr>';
+}
+function filterRows(q) {
+  const n = q.toLowerCase();
+  $('studentRows').innerHTML = studentRows(dataset.students.filter(s=>(s.name+' '+s.student_code+' '+(s.phone||'')+' '+(s.guardian_name||'')).toLowerCase().includes(n)));
+}
+function openStudent(id='') {
+  const s = id ? dataset.students.find(x=>x.id===id) : null;
+  modal(s?'Edit student':'Add student', `<div class="form-grid">
+    <div class="field"><label>Name</label><input id="m_name" value="${esc(s?.name||'')}"></div>
+    <div class="field"><label>Student ID</label><input id="m_code" value="${esc(s?.student_code||('ST-'+Date.now().toString().slice(-6)))}" ${s?'disabled':''}></div>
+    <div class="field"><label>Phone</label><input id="m_phone" value="${esc(s?.phone||'')}"></div>
+    <div class="field"><label>Guardian</label><input id="m_guardian" value="${esc(s?.guardian_name||'')}"></div>
+    <div class="field"><label>Guardian phone</label><input id="m_gphone" value="${esc(s?.guardian_phone||'')}"></div>
+    <div class="field"><label>Batch</label><select id="m_batch"><option value="">Unassigned</option>${dataset.batches.map(b=>`<option value="${b.id}" ${s?.batch_id===b.id?'selected':''}>${esc(b.name)}</option>`).join('')}</select></div>
+    <div class="field"><label>Monthly fee</label><input id="m_fee" type="number" value="${Number(s?.monthly_fee||0)}"></div>
+  </div><div class="actions" style="justify-content:flex-end;margin-top:18px"><button class="btn btn-secondary" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="saveStudent('${id}')">Save</button></div>`);
+}
+async function saveStudent(id) {
+  try {
+    const payload = {organization_id:orgId(),name:$('m_name').value.trim(),student_code:$('m_code').value.trim(),phone:$('m_phone').value.trim()||null,guardian_name:$('m_guardian').value.trim()||null,guardian_phone:$('m_gphone').value.trim()||null,batch_id:$('m_batch').value||null,monthly_fee:Number($('m_fee').value||0)};
+    if (!payload.name || !payload.student_code) throw new Error('Name and Student ID are required.');
+    const q = id ? supa().from('students').update(payload).eq('id',id).eq('organization_id',orgId()) : supa().from('students').insert(payload);
+    const {error} = await q; if (error) throw error;
+    closeModal(); await loadData(); render(); toast(id?'Student updated.':'Student added.');
+  } catch(e){showError(e);}
+}
+
+function batches(){return `<div class="page-head"><div><h1>Batches</h1><div class="subtitle">Manage classes, schedule and rooms.</div></div><button class="btn btn-primary" onclick="openBatch()">＋ New batch</button></div><div class="grid grid-2">${dataset.batches.map(b=>`<div class="card"><span class="badge badge-blue">${esc(b.subject||'General')}</span><h2 style="margin-top:10px">${esc(b.name)}</h2><div class="subtitle">${esc(b.teacher_name||'No teacher')} • ${esc(b.class_time||'No time')}</div><div class="grid grid-2" style="margin-top:18px"><div><div class="subtitle">Room</div><strong>${esc(b.room||'—')}</strong></div><div><div class="subtitle">Students</div><strong>${dataset.students.filter(s=>s.batch_id===b.id).length}</strong></div></div></div>`).join('')||'<div class="empty">No batches yet.</div>'}</div>`;}
+function openBatch(){modal('New batch',`<div class="form-grid"><div class="field"><label>Name</label><input id="b_name"></div><div class="field"><label>Subject</label><input id="b_subject"></div><div class="field"><label>Teacher</label><select id="b_teacher"><option value="">No teacher</option>${dataset.teachers.map(t=>`<option>${esc(t.name)}</option>`).join('')}</select></div><div class="field"><label>Time</label><input id="b_time" value="08:00 AM"></div><div class="field"><label>Room</label><input id="b_room" value="Room 101"></div></div><div class="actions" style="justify-content:flex-end;margin-top:18px"><button class="btn btn-secondary" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="saveBatch()">Create</button></div>`);}
+async function saveBatch(){try{const p={organization_id:orgId(),name:$('b_name').value.trim(),subject:$('b_subject').value.trim()||null,teacher_name:$('b_teacher').value||null,class_time:$('b_time').value.trim()||null,room:$('b_room').value.trim()||null};if(!p.name)throw new Error('Batch name is required.');const {error}=await supa().from('batches').insert(p);if(error)throw error;closeModal();await loadData();render();toast('Batch created.')}catch(e){showError(e)}}
+
+function teachers(){return `<div class="page-head"><div><h1>Teachers</h1><div class="subtitle">Teacher directory.</div></div><button class="btn btn-primary" onclick="openTeacher()">＋ Add teacher</button></div><div class="grid grid-3">${dataset.teachers.map(t=>`<div class="card"><h2>${esc(t.name)}</h2><div class="subtitle">${esc(t.subject||'')}</div><div style="margin-top:14px">Rate/class: <strong>${money(t.rate_per_class)}</strong></div></div>`).join('')||'<div class="empty">No teachers yet.</div>'}</div>`;}
+function openTeacher(){modal('Add teacher',`<div class="form-grid"><div class="field"><label>Name</label><input id="t_name"></div><div class="field"><label>Subject</label><input id="t_subject"></div><div class="field"><label>Phone</label><input id="t_phone"></div><div class="field"><label>Rate/class</label><input id="t_rate" type="number" value="0"></div></div><div class="actions" style="justify-content:flex-end;margin-top:18px"><button class="btn btn-secondary" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="saveTeacher()">Save</button></div>`);}
+async function saveTeacher(){try{const p={organization_id:orgId(),name:$('t_name').value.trim(),subject:$('t_subject').value.trim()||null,phone:$('t_phone').value.trim()||null,rate_per_class:Number($('t_rate').value||0)};if(!p.name)throw new Error('Teacher name is required.');const {error}=await supa().from('teachers').insert(p);if(error)throw error;closeModal();await loadData();render();toast('Teacher added.')}catch(e){showError(e)}}
+
+function fees(){const total=dataset.payments.reduce((n,p)=>n+Number(p.amount||0),0);return `<div class="page-head"><div><h1>Fees & Payments</h1><div class="subtitle">Real payment records in the cloud database.</div></div><button class="btn btn-primary" onclick="openPayment()">＋ Record payment</button></div><div class="grid grid-3">${stat('Collected',money(total),dataset.payments.length+' payments','৳')}${stat('Students',dataset.students.length,'enrolled','♙')}${stat('Outstanding',money(dataset.students.reduce((n,s)=>n+Math.max(0,Number(s.monthly_fee||0)-s.paid),0)),'current month estimate','!')}</div><div class="card" style="margin-top:18px"><div class="table-wrap"><table><thead><tr><th>Receipt</th><th>Student</th><th>Amount</th><th>Method</th><th>Date</th></tr></thead><tbody>${dataset.payments.map(p=>`<tr><td>${esc(p.receipt_no||p.id.slice(0,8))}</td><td>${esc(p.students?.name||'Student')}</td><td>${money(p.amount)}</td><td>${esc(p.payment_method)}</td><td>${new Date(p.paid_at).toLocaleDateString('en-BD')}</td></tr>`).join('')||'<tr><td colspan="5"><div class="empty">No payments yet.</div></td></tr>'}</tbody></table></div></div>`;}
+function openPayment(){modal('Record payment',`<div class="form-grid"><div class="field"><label>Student</label><select id="p_student">${dataset.students.map(s=>`<option value="${s.id}">${esc(s.name)}</option>`).join('')}</select></div><div class="field"><label>Amount</label><input id="p_amount" type="number" value="1500"></div><div class="field"><label>Method</label><select id="p_method"><option>bKash</option><option>Nagad</option><option>Cash</option><option>Bank</option></select></div><div class="field"><label>Receipt #</label><input id="p_receipt" value="RCP-${Date.now().toString().slice(-6)}"></div></div><div class="actions" style="justify-content:flex-end;margin-top:18px"><button class="btn btn-secondary" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="savePayment()">Save</button></div>`);}
+async function savePayment(){try{const p={organization_id:orgId(),student_id:$('p_student').value,amount:Number($('p_amount').value||0),payment_method:$('p_method').value,receipt_no:$('p_receipt').value.trim()||null};if(!p.student_id||p.amount<=0)throw new Error('Enter a valid payment.');const {error}=await supa().from('payments').insert(p);if(error)throw error;closeModal();await loadData();render();toast('Payment recorded.')}catch(e){showError(e)}}
+
+function attendance(){const students=dataset.students;const d=today();return `<div class="page-head"><div><h1>Attendance</h1><div class="subtitle">Mark today's attendance and save it to the cloud.</div></div><button class="btn btn-primary" onclick="saveAttendance()">Save attendance</button></div><div class="card"><div class="table-wrap"><table><thead><tr><th>Student</th><th>Batch</th><th>Attendance</th><th>Today</th></tr></thead><tbody>${students.map(s=>{const a=dataset.attendance.find(x=>x.student_id===s.id&&x.attendance_date===d);return `<tr><td><strong>${esc(s.name)}</strong></td><td>${esc(s.batches?.name||'Unassigned')}</td><td>${s.attendancePct}%</td><td><input class="att-check" type="checkbox" data-student="${s.id}" ${a?a.present?'checked':'':'checked'}></td></tr>`}).join('')||'<tr><td colspan="4"><div class="empty">No students yet.</div></td></tr>'}</tbody></table></div></div>`;}
+async function saveAttendance(){try{for(const box of document.querySelectorAll('.att-check')){const sid=box.dataset.student, present=box.checked;const existing=dataset.attendance.find(a=>a.student_id===sid&&a.attendance_date===today());if(existing){const {error}=await supa().from('attendance').update({present}).eq('id',existing.id).eq('organization_id',orgId());if(error)throw error;}else{const {error}=await supa().from('attendance').insert({organization_id:orgId(),student_id:sid,attendance_date:today(),present});if(error)throw error;}}await loadData();render();toast('Attendance saved.')}catch(e){showError(e)}}
+
+function exams(){return `<div class="page-head"><div><h1>Exams & Results</h1><div class="subtitle">Create exams and enter student marks.</div></div><button class="btn btn-primary" onclick="openExam()">＋ Create exam</button></div><div class="grid grid-2">${dataset.exams.map(e=>`<div class="card"><span class="badge badge-blue">${esc(e.subject||'General')}</span><h2 style="margin-top:10px">${esc(e.name)}</h2><div class="subtitle">${e.exam_date||'No date'} • ${e.total_marks} marks</div><button class="btn btn-primary btn-sm" style="margin-top:16px" onclick="enterMarks('${e.id}')">Enter marks</button></div>`).join('')||'<div class="empty">No exams yet.</div>'}</div>`;}
+function openExam(){modal('Create exam',`<div class="form-grid"><div class="field"><label>Name</label><input id="e_name"></div><div class="field"><label>Subject</label><input id="e_subject"></div><div class="field"><label>Date</label><input id="e_date" type="date" value="${today()}"></div><div class="field"><label>Total marks</label><input id="e_total" type="number" value="100"></div></div><div class="actions" style="justify-content:flex-end;margin-top:18px"><button class="btn btn-secondary" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="saveExam()">Create</button></div>`);}
+async function saveExam(){try{const p={organization_id:orgId(),name:$('e_name').value.trim(),subject:$('e_subject').value.trim()||null,exam_date:$('e_date').value||null,total_marks:Number($('e_total').value||100)};if(!p.name)throw new Error('Exam name is required.');const {error}=await supa().from('exams').insert(p);if(error)throw error;closeModal();await loadData();render();toast('Exam created.')}catch(e){showError(e)}}
+function enterMarks(examId){const exam=dataset.exams.find(e=>e.id===examId);if(!exam)return;modal('Enter marks',`<div class="notice">Exam: <strong>${esc(exam.name)}</strong> • Total: ${exam.total_marks}</div><div class="table-wrap" style="margin-top:14px"><table><thead><tr><th>Student</th><th>Marks</th></tr></thead><tbody>${dataset.students.map(s=>{const r=dataset.results.find(x=>x.exam_id===examId&&x.student_id===s.id);return `<tr><td>${esc(s.name)}</td><td><input class="mark-box" data-student="${s.id}" value="${r?.marks??''}" type="number" min="0" max="${exam.total_marks}"></td></tr>`}).join('')}</tbody></table></div><div class="actions" style="justify-content:flex-end;margin-top:18px"><button class="btn btn-secondary" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="saveMarks('${examId}')">Save marks</button></div>`);}
+async function saveMarks(examId){try{const exam=dataset.exams.find(e=>e.id===examId);for(const box of document.querySelectorAll('.mark-box')){const value=box.value.trim();const sid=box.dataset.student;const old=dataset.results.find(r=>r.exam_id===examId&&r.student_id===sid);if(!value){if(old)await supa().from('results').delete().eq('id',old.id).eq('organization_id',orgId());continue;}const marks=Number(value);if(marks<0||marks>Number(exam.total_marks))throw new Error(`Marks must be between 0 and ${exam.total_marks}.`);if(old){const {error}=await supa().from('results').update({marks}).eq('id',old.id).eq('organization_id',orgId());if(error)throw error;}else{const {error}=await supa().from('results').insert({organization_id:orgId(),exam_id:examId,student_id:sid,marks});if(error)throw error;}}closeModal();await loadData();render();toast('Marks saved.')}catch(e){showError(e)}}
+
+function notices(){return `<div class="page-head"><div><h1>Notices</h1><div class="subtitle">Internal announcements for your center.</div></div><button class="btn btn-primary" onclick="openNotice()">＋ New notice</button></div><div class="card"><div class="list">${dataset.notices.map(n=>`<div class="list-item"><div><strong>${esc(n.title)}</strong><div class="subtitle">${esc(n.body)}</div></div><span class="subtitle">${new Date(n.created_at).toLocaleDateString('en-BD')}</span></div>`).join('')||'<div class="empty">No notices yet.</div>'}</div></div>`;}
+function openNotice(){modal('New notice',`<div class="field"><label>Title</label><input id="n_title"></div><div class="field" style="margin-top:12px"><label>Message</label><textarea id="n_body" rows="6"></textarea></div><div class="actions" style="justify-content:flex-end;margin-top:18px"><button class="btn btn-secondary" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="saveNotice()">Publish</button></div>`);}
+async function saveNotice(){try{const p={organization_id:orgId(),title:$('n_title').value.trim(),body:$('n_body').value.trim()};if(!p.title||!p.body)throw new Error('Title and message are required.');const {error}=await supa().from('notices').insert(p);if(error)throw error;closeModal();await loadData();render();toast('Notice published.')}catch(e){showError(e)}}
+
+function settings(){const o=profile?.organizations||{};return `<div class="page-head"><div><h1>Settings</h1><div class="subtitle">Manage your coaching center.</div></div></div><div class="card"><div class="form-grid"><div class="field"><label>Center name</label><input id="s_name" value="${esc(o.name||'')}"></div><div class="field"><label>Phone</label><input id="s_phone" value="${esc(o.phone||'')}"></div><div class="field"><label>District</label><input id="s_district" value="${esc(o.district||'')}"></div></div><button class="btn btn-primary" style="margin-top:18px" onclick="saveSettings()">Save settings</button></div>`;}
+async function saveSettings(){try{const p={name:$('s_name').value.trim(),phone:$('s_phone').value.trim()||null,district:$('s_district').value.trim()||null};if(!p.name)throw new Error('Center name is required.');const {error}=await supa().from('organizations').update(p).eq('id',orgId());if(error)throw error;await loadProfile();render();toast('Settings saved.')}catch(e){showError(e)}}
+
+function modal(title, body) {
+  const old = $('modalRoot'); if (old) old.remove();
+  const el = document.createElement('div'); el.id='modalRoot'; el.className='modal-backdrop';
+  el.innerHTML = `<div class="modal"><div class="modal-head"><h2>${title}</h2><button class="close" onclick="closeModal()">×</button></div>${body}</div>`;
+  document.body.appendChild(el);
+}
+function closeModal(){ $('modalRoot')?.remove(); }
+
+async function boot() {
+  try {
+    const {data,error} = await supa().auth.getSession();
+    if (error) throw error;
+    session = data.session;
+    if (!session) { authView(); return; }
+    await loadProfile();
+    await loadData();
+    layout();
+  } catch(e) {
+    document.body.innerHTML = `<div style="min-height:100vh;display:grid;place-items:center;background:#f5f7fb;padding:20px"><div class="card" style="max-width:620px"><h1>EduFlow could not start</h1><div class="notice">${esc(e.message)}</div><div class="actions" style="margin-top:16px"><button class="btn btn-primary" onclick="location.reload()">Reload</button><button class="btn btn-secondary" onclick="logout()">Sign out</button></div></div></div>`;
+    console.error(e);
+  }
+}
+
+window.bootstrap = boot;
+window.startApp = boot;
+window.addEventListener('load', boot);
