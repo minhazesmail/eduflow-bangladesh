@@ -1,3 +1,107 @@
+
+const SUPABASE_URL = "https://tljxhsspwabeslpbyiif.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_LhIRXury0u3KuwbT7RApdQ_rsMFM-tm";
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+let session = null;
+let profile = null;
+
+function authShell(message="") {
+  document.getElementById("app").innerHTML = `
+    <div style="min-height:100vh;display:grid;place-items:center;padding:20px;background:#f5f7fb">
+      <div class="card" style="width:min(460px,100%);padding:28px">
+        <div class="brand" style="padding:0 0 22px;color:#172033"><div class="logo">E</div><div><strong>EduFlow</strong><small style="color:#6b7280">Bangladesh • Coaching OS</small></div></div>
+        <h1 style="font-size:24px">Welcome to EduFlow</h1>
+        <div class="subtitle" style="margin-bottom:18px">Create your coaching center account or sign in.</div>
+        ${message ? `<div class="notice" style="margin-bottom:14px">${esc(message)}</div>` : ""}
+        <div class="field"><label>Email</label><input id="auth_email" type="email" placeholder="you@example.com"></div>
+        <div class="field" style="margin-top:12px"><label>Password</label><input id="auth_password" type="password" placeholder="At least 6 characters"></div>
+        <div id="signup_fields" style="display:none">
+          <div class="field" style="margin-top:12px"><label>Your name</label><input id="auth_name" placeholder="Your full name"></div>
+          <div class="field" style="margin-top:12px"><label>Coaching center name</label><input id="auth_org" placeholder="${esc(profile?.organizations?.name||"My Coaching Center")}"></div>
+        </div>
+        <div class="actions" style="margin-top:18px">
+          <button class="btn btn-primary" style="flex:1" id="signin_btn" onclick="signIn()">Sign in</button>
+          <button class="btn btn-secondary" id="signup_btn" onclick="toggleAuthMode()">Create account</button>
+        </div>
+        <div id="auth_hint" class="subtitle" style="margin-top:14px;font-size:12px">New accounts create a separate coaching-center workspace.</div>
+      </div>
+    </div>`;
+}
+
+let authMode = "signin";
+function toggleAuthMode(){
+  authMode = authMode === "signin" ? "signup" : "signin";
+  document.getElementById("signup_fields").style.display = authMode === "signup" ? "block" : "none";
+  document.getElementById("signin_btn").textContent = authMode === "signup" ? "Create account" : "Sign in";
+  document.getElementById("signup_btn").textContent = authMode === "signup" ? "Back to sign in" : "Create account";
+  document.getElementById("auth_hint").textContent = authMode === "signup" ? "Your workspace will be private to your account." : "New accounts create a separate coaching-center workspace.";
+}
+
+async function signIn(){
+  const email=document.getElementById("auth_email").value.trim(), password=document.getElementById("auth_password").value;
+  if(!email || !password){authShell("Email and password are required.");return;}
+  if(authMode === "signup"){
+    const name=document.getElementById("auth_name").value.trim(), org=document.getElementById("auth_org").value.trim();
+    if(!name || !org){authShell("Name and coaching center are required for signup.");toggleAuthMode();return;}
+    const {data,error}=await sb.auth.signUp({email,password,options:{data:{full_name:name,organization_name:org}}});
+    if(error){authShell(error.message);toggleAuthMode();return;}
+    if(data.session){ await finishSignup(data.user, name, org); } else { authShell("Account created. Check your email to confirm, then sign in."); }
+    return;
+  }
+  const {error}=await sb.auth.signInWithPassword({email,password});
+  if(error){authShell(error.message);return;}
+  await bootstrap();
+}
+
+async function finishSignup(user,name,orgName){
+  const {data:org,error:orgError}=await sb.from("organizations").insert({name:orgName}).select().single();
+  if(orgError){authShell(orgError.message);return;}
+  const {error:profileError}=await sb.from("profiles").insert({id:user.id,organization_id:org.id,full_name:name,role:"owner"});
+  if(profileError){authShell(profileError.message);return;}
+  await bootstrap();
+}
+
+async function bootstrap(){
+  const {data:{session:s}}=await sb.auth.getSession();
+  session=s;
+  if(!session){authShell();return;}
+  const {data:p}=await sb.from("profiles").select("*, organizations(name)").eq("id",session.user.id).maybeSingle();
+  profile=p;
+  if(!profile){
+    authShell("Your profile is not ready yet. If you just signed up, sign out and sign in again.");
+    return;
+  }
+  await loadCloudData();
+  render();
+}
+
+async function loadCloudData(){
+  const orgId=profile.organization_id;
+  const [studentsR,batchesR,teachersR,paymentsR,examsR,noticesR]=await Promise.all([
+    sb.from("students").select("*, batches(name)").eq("organization_id",orgId).order("created_at",{ascending:false}),
+    sb.from("batches").select("*").eq("organization_id",orgId).order("created_at"),
+    sb.from("teachers").select("*").eq("organization_id",orgId).order("created_at"),
+    sb.from("payments").select("*, students(name)").eq("organization_id",orgId).order("created_at",{ascending:false}),
+    sb.from("exams").select("*").eq("organization_id",orgId).order("exam_date",{ascending:false}),
+    sb.from("notices").select("*").eq("organization_id",orgId).order("created_at",{ascending:false})
+  ]);
+  state.students=(studentsR.data||[]).map(s=>({id:s.student_code,dbId:s.id,name:s.name,phone:s.phone||"",guardian:s.guardian_name||"",batch:s.batches?.name||"Unassigned",batchId:s.batch_id,fee:Number(s.monthly_fee||0),paid:Number(s.paid_amount||0),attendance:Number(s.attendance||0),result:Number(s.latest_result||0),status:s.status||"Active"}));
+  state.batches=(batchesR.data||[]).map(b=>({id:b.id,name:b.name,subject:b.subject||"",teacher:b.teacher_name||"",time:b.time_text||"",room:b.room||"",students:state.students.filter(s=>s.batchId===b.id).length}));
+  state.teachers=(teachersR.data||[]).map(t=>({id:t.id,name:t.name,subject:t.subject||"",phone:t.phone||"",classes:t.classes_count||0,rate:Number(t.rate_per_class||0)}));
+  state.payments=(paymentsR.data||[]).map(p=>({id:p.id.slice(0,8),dbId:p.id,student:p.students?.name||"Student",studentId:p.student_id,amount:Number(p.amount||0),date:p.paid_on,method:p.method,status:"Paid"}));
+  state.exams=(examsR.data||[]).map(e=>({id:e.id,name:e.name,subject:e.subject||"",date:e.exam_date,total:Number(e.total_marks||100),participants:0}));
+}
+
+async function cloudAddStudent(s){
+  const orgId=profile.organization_id;
+  const batch=state.batches.find(b=>b.name===s.batch);
+  const {data,error}=await sb.from("students").insert({organization_id:orgId,student_code:s.id,name:s.name,phone:s.phone,guardian_name:s.guardian_name||s.guardian,batch_id:batch?.id||null,monthly_fee:s.fee,paid_amount:0,attendance:100,latest_result:0,status:"Active"}).select("*, batches(name)").single();
+  if(error){toast(error.message);return false;}
+  s.dbId=data.id;s.batchId=data.batch_id;return true;
+}
+
+async function logout(){await sb.auth.signOut();session=null;profile=null;authShell();}
+
 const seed = {
   students: [
     {id:"ST-1001", name:"Md. Fahim Rahman", phone:"01711000001", guardian:"Abdul Rahman", batch:"HSC Physics A", fee:1500, paid:1500, attendance:92, result:87, status:"Active"},
@@ -61,13 +165,13 @@ function render(){
       </nav>
       <div class="sidebar-bottom">
         <div style="font-size:12px;color:#9ca3af">Demo institution</div>
-        <div style="font-weight:700;margin-top:4px">ABC Coaching Center</div>
+        <div style="font-weight:700;margin-top:4px">${esc(profile?.organizations?.name||"My Coaching Center")}</div>
       </div>
     </aside>
     <main class="main">
       <header class="topbar">
         <div style="display:flex;align-items:center;gap:12px"><button class="mobile-menu" onclick="toggleSidebar()">☰</button><strong>${pageTitle()}</strong></div>
-        <div class="right"><span style="color:var(--muted);font-size:13px">Admin</span><button class="btn btn-secondary btn-sm" onclick="resetDemo()">Reset demo</button></div>
+        <div class="right"><span style="color:var(--muted);font-size:13px">Admin</span><button class="btn btn-secondary btn-sm" onclick="logout()">Sign out</button></div>
       </header>
       <section class="container">${page()}</section>
     </main>
@@ -77,7 +181,7 @@ function nav(id,label){ return `<button class="${currentPage===id?"active":""}" 
 function pageTitle(){ return ({dashboard:"Dashboard",students:"Students",batches:"Batches",attendance:"Attendance",fees:"Fees & Payments",exams:"Exams & Results",teachers:"Teachers",notices:"Notices",settings:"Settings"})[currentPage]; }
 function go(p){ currentPage=p; render(); window.scrollTo(0,0); }
 function toggleSidebar(){document.getElementById("sidebar")?.classList.toggle("open");}
-function resetDemo(){ if(confirm("Reset all demo data?")){state=JSON.parse(JSON.stringify(seed));save();render();toast("Demo data reset");}}
+function resetDemo(){toast("Cloud mode is enabled; demo reset is disabled.");}
 
 function page(){
   if(currentPage==="dashboard") return dashboard();
@@ -96,7 +200,7 @@ function dashboard(){
   const collected=state.payments.reduce((a,p)=>a+Number(p.amount),0);
   const outstanding=state.students.reduce((a,s)=>a+Math.max(0,s.fee-s.paid),0);
   const risk=state.students.filter(s=>s.status==="At Risk").length;
-  return `<div class="page-head"><div><h1>Good afternoon 👋</h1><div class="subtitle">Here's what is happening at ABC Coaching Center today.</div></div><button class="btn btn-primary" onclick="openStudentModal()">+ Add student</button></div>
+  return `<div class="page-head"><div><h1>Good afternoon 👋</h1><div class="subtitle">Here's what is happening at ${esc(profile?.organizations?.name||"My Coaching Center")} today.</div></div><button class="btn btn-primary" onclick="openStudentModal()">+ Add student</button></div>
   <div class="grid grid-4">
     ${stat("Students",total,"♙")}
     ${stat("Today's attendance","91%","✓")}
@@ -134,7 +238,7 @@ function openStudentModal(){
  <div class="field"><label>Monthly fee</label><input id="f_fee" type="number" value="1500"></div>
  </div><div class="actions" style="margin-top:18px;justify-content:flex-end"><button class="btn btn-secondary" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="addStudent()">Save student</button></div>`);
 }
-function addStudent(){const name=document.getElementById("f_name").value.trim();if(!name){toast("Name is required");return;}state.students.unshift({id:"ST-"+Date.now().toString().slice(-5),name,phone:document.getElementById("f_phone").value,guardian:document.getElementById("f_guardian").value,batch:document.getElementById("f_batch").value,fee:Number(document.getElementById("f_fee").value||0),paid:0,attendance:100,result:0,status:"Active"});save();closeModal();render();toast("Student added");}
+async function addStudent(){const name=document.getElementById("f_name").value.trim();if(!name){toast("Name is required");return;}const student={id:"ST-"+Date.now().toString().slice(-5),name,phone:document.getElementById("f_phone").value,guardian:document.getElementById("f_guardian").value,batch:document.getElementById("f_batch").value,fee:Number(document.getElementById("f_fee").value||0),paid:0,attendance:100,result:0,status:"Active"};const ok=await cloudAddStudent(student);if(!ok)return;state.students.unshift(student);save();closeModal();render();toast("Student added to cloud database");}
 function studentDetails(id){const s=state.students.find(x=>x.id===id);modal("Student profile",`<div class="grid grid-2"><div class="card" style="padding:15px"><div class="subtitle">Student ID</div><strong>${s.id}</strong><div class="subtitle" style="margin-top:12px">Phone</div><strong>${esc(s.phone)}</strong><div class="subtitle" style="margin-top:12px">Guardian</div><strong>${esc(s.guardian)}</strong></div><div class="card" style="padding:15px"><div class="subtitle">Attendance</div><strong>${s.attendance}%</strong><div class="subtitle" style="margin-top:12px">Latest result</div><strong>${s.result}%</strong><div class="subtitle" style="margin-top:12px">Outstanding</div><strong>${money(Math.max(0,s.fee-s.paid))}</strong></div></div><div class="notice" style="margin-top:16px">Risk engine: <strong>${s.status==="At Risk"?"High — follow up with guardian":"Low — healthy"}.</strong></div>`);}
 
 function batches(){
@@ -159,7 +263,7 @@ function fees(){
  <div class="card" style="margin-top:18px"><h2>Payment ledger</h2><div class="table-wrap" style="margin-top:12px"><table><thead><tr><th>Receipt</th><th>Student</th><th>Amount</th><th>Date</th><th>Method</th><th>Status</th></tr></thead><tbody>${state.payments.map(p=>`<tr><td><strong>${p.id}</strong></td><td>${esc(p.student)}</td><td>${money(p.amount)}</td><td>${p.date}</td><td>${p.method}</td><td><span class="badge badge-success">${p.status}</span></td></tr>`).join("")}</tbody></table></div></div>`;
 }
 function openPaymentModal(){modal("Record payment",`<div class="form-grid"><div class="field"><label>Student</label><select id="p_student">${state.students.map(s=>`<option value="${s.id}">${esc(s.name)} — ${money(Math.max(0,s.fee-s.paid))} due</option>`).join("")}</select></div><div class="field"><label>Amount</label><input id="p_amount" type="number" value="1500"></div><div class="field"><label>Method</label><select id="p_method"><option>bKash</option><option>Nagad</option><option>Cash</option><option>Bank</option></select></div></div><div class="actions" style="margin-top:18px;justify-content:flex-end"><button class="btn btn-secondary" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="addPayment()">Save payment</button></div>`);}
-function addPayment(){const sid=document.getElementById("p_student").value, s=state.students.find(x=>x.id===sid), amount=Number(document.getElementById("p_amount").value||0);s.paid+=amount;s.status=(s.attendance<70||s.result<60)?"At Risk":"Active";state.payments.unshift({id:"RCP-"+Date.now().toString().slice(-4),student:s.name,amount,date:new Date().toISOString().slice(0,10),method:document.getElementById("p_method").value,status:"Paid"});save();closeModal();render();toast("Payment recorded");}
+async function addPayment(){const sid=document.getElementById("p_student").value, s=state.students.find(x=>x.id===sid), amount=Number(document.getElementById("p_amount").value||0);const {data,error}=await sb.from("payments").insert({organization_id:profile.organization_id,student_id:s.dbId,amount,method:document.getElementById("p_method").value}).select().single();if(error){toast(error.message);return;}s.paid+=amount;s.status=(s.attendance<70||s.result<60)?"At Risk":"Active";await sb.from("students").update({paid_amount:s.paid,status:s.status}).eq("id",s.dbId);state.payments.unshift({id:data.id.slice(0,8),dbId:data.id,student:s.name,amount,date:data.paid_on,method:data.method,status:"Paid"});save();closeModal();render();toast("Payment recorded in cloud");}
 
 function exams(){
  return `<div class="page-head"><div><h1>Exams & Results</h1><div class="subtitle">Create exams, enter marks and publish results.</div></div><button class="btn btn-primary" onclick="openExamModal()">+ Create exam</button></div>
@@ -185,10 +289,10 @@ function sendNotice(){const n=document.getElementById("n_title").value.trim();if
 
 function settings(){
  return `<div class="page-head"><div><h1>Settings</h1><div class="subtitle">Institution profile and demo controls.</div></div></div>
- <div class="grid grid-2"><div class="card"><h2>Institution</h2><div class="form-grid" style="margin-top:16px"><div class="field"><label>Name</label><input value="ABC Coaching Center"></div><div class="field"><label>Phone</label><input value="01700000000"></div><div class="field"><label>District</label><input value="Dhaka"></div><div class="field"><label>Currency</label><input value="BDT (৳)" disabled></div></div><button class="btn btn-primary" style="margin-top:18px" onclick="toast('Settings saved')">Save settings</button></div>
+ <div class="grid grid-2"><div class="card"><h2>Institution</h2><div class="form-grid" style="margin-top:16px"><div class="field"><label>Name</label><input value="${esc(profile?.organizations?.name||"My Coaching Center")}"></div><div class="field"><label>Phone</label><input value="01700000000"></div><div class="field"><label>District</label><input value="Dhaka"></div><div class="field"><label>Currency</label><input value="BDT (৳)" disabled></div></div><button class="btn btn-primary" style="margin-top:18px" onclick="toast('Settings saved')">Save settings</button></div>
  <div class="card"><h2>Current release</h2><p class="subtitle">EduFlow MVP is designed to run on Vercel with no server setup. Data in this starter is stored in your browser.</p><div class="notice">For a real multi-user SaaS, the next upgrade is Supabase authentication + PostgreSQL + row-level security.</div><div style="margin-top:16px"><strong>Included now</strong><div class="list" style="margin-top:8px"><div class="list-item"><span>Dashboard</span><span>✓</span></div><div class="list-item"><span>Students / batches / teachers</span><span>✓</span></div><div class="list-item"><span>Attendance</span><span>✓</span></div><div class="list-item"><span>Fees / receipts</span><span>✓</span></div><div class="list-item"><span>Exams / results</span><span>✓</span></div><div class="list-item"><span>Notices</span><span>✓</span></div></div></div></div></div>`;
 }
 
 function modal(title,body){const old=document.getElementById("modalRoot");if(old)old.remove();const el=document.createElement("div");el.id="modalRoot";el.className="modal-backdrop";el.innerHTML=`<div class="modal"><div class="modal-head"><h2>${title}</h2><button class="close" onclick="closeModal()">×</button></div>${body}</div>`;document.body.appendChild(el);}
 function closeModal(){document.getElementById("modalRoot")?.remove();}
-render();
+bootstrap();
