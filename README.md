@@ -1,11 +1,18 @@
-# EduFlow — Clean Cloud V3
+# EduFlow UI/UX V4
 
-This version removes the broken startup flow and uses a single coherent Supabase client.
+A clean, mobile-friendly redesign for the Bangladesh coaching-center SaaS.
 
-Upload/replace:
-- index.html
-- app.js
-- keep styles.css
+Core UX:
+- Dashboard
+- Students
+- Batches
+- Attendance
+- Fees & payments
+- Exams
+- Teachers
+- Notices
+- Settings
+- Authentication
+- Supabase cloud data
 
-Supabase is configured for the dedicated EduFlow project.
-Sign-up creates a private organization automatically through the database trigger.
+Replace `index.html`, `styles.css`, and `app.js` in the GitHub repo.
