@@ -9,6 +9,8 @@ let selectedBatchId = 'all';
 let selectedExamId = null;
 let data = { students:[], batches:[], teachers:[], payments:[], exams:[], results:[], attendance:[], notices:[] };
 const cacheKey = 'eduflow-last-page';
+const sidebarKey = 'eduflow-sidebar-hidden';
+let sidebarHidden = localStorage.getItem(sidebarKey) === '1';
 
 const icons = {dashboard:'⌂',students:'◉',batches:'▤',attendance:'✓',fees:'৳',exams:'▣',teachers:'♟',notices:'◈',settings:'⚙'};
 const esc = s => String(s ?? '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
@@ -23,71 +25,12 @@ function nav(id,label){ return `<button class="${currentPage===id?'active':''}" 
 function pageTitle(){return {dashboard:'Dashboard',students:'Students',batches:'Batches',attendance:'Attendance',fees:'Fees & Payments',exams:'Exams & Results',teachers:'Teachers',notices:'Notices',settings:'Settings'}[currentPage] || 'EduFlow';}
 
 function authShell(message=''){
-  document.getElementById('app').innerHTML=`<div class="login-shell"><div class="login-card"><div class="login-brand"><div class="brand-mark">EF</div><div><strong>EduFlow</strong><div class="subtitle">Bangladesh • Coaching Center OS</div></div></div><h1 style="margin:0 0 7px">Welcome back</h1><div class="subtitle" style="margin-bottom:20px">Run your coaching center from one elegant workspace.</div>${message?`<div class="alert" style="margin-bottom:14px">${esc(message)}</div>`:''}<div class="field"><label>Email</label><input id="auth_email" type="email" autocomplete="email" placeholder="you@example.com"></div><div class="field" style="margin-top:12px"><label>Password</label><input id="auth_password" type="password" autocomplete="current-password" placeholder="At least 6 characters"></div><div id="signup_fields" style="display:none"><div class="field" style="margin-top:12px"><label>Your name</label><input id="auth_name" placeholder="Full name"></div><div class="field" style="margin-top:12px"><label>Coaching center</label><input id="auth_org" placeholder="My Coaching Center"></div></div><div class="actions" style="margin-top:18px"><button id="auth_submit" class="btn btn-primary" style="flex:1" onclick="submitAuth()">Sign in</button><button id="auth_toggle" class="btn btn-secondary" onclick="toggleAuthMode()">Create account</button></div><div id="auth_hint" class="muted-note" style="margin-top:12px">New accounts get a private workspace.</div></div></div>`;
-}
-let authMode='signin';
-function toggleAuthMode(){ authMode=authMode==='signin'?'signup':'signin'; document.getElementById('signup_fields').style.display=authMode==='signup'?'block':'none'; document.getElementById('auth_submit').textContent=authMode==='signup'?'Create account':'Sign in'; document.getElementById('auth_toggle').textContent=authMode==='signup'?'Back to sign in':'Create account'; document.getElementById('auth_hint').textContent=authMode==='signup'?'We will create a separate coaching-center workspace for this account.':'New accounts get a private workspace.'; }
-async function submitAuth(){
-  const email=document.getElementById('auth_email').value.trim(), password=document.getElementById('auth_password').value;
-  if(!email||!password){authShell('Email and password are required.');return;}
-  const btn=document.getElementById('auth_submit'); setBusy(btn,true);
-  try{
-    ensureClient();
-    if(authMode==='signup'){
-      const name=document.getElementById('auth_name').value.trim(), orgName=document.getElementById('auth_org').value.trim();
-      if(!name||!orgName) throw new Error('Name and coaching center are required.');
-      const {data:authData,error}=await sb.auth.signUp({email,password,options:{data:{full_name:name,organization_name:orgName}}});
-      if(error)throw error;
-      if(authData.session){await finishSignup(authData.user,name,orgName);await bootstrap();}
-      else authShell('Account created. Check your email for confirmation, then sign in.');
-    }else{
-      const {error}=await sb.auth.signInWithPassword({email,password}); if(error)throw error; await bootstrap();
-    }
-  }catch(e){authShell(e.message || 'Authentication failed.');}
-}
-async function finishSignup(user,name,orgName){
-  const {data:org,error:orgErr}=await table('organizations').insert({name:orgName}).select().single(); if(orgErr)throw orgErr;
-  const {error:profileErr}=await table('profiles').insert({id:user.id,organization_id:org.id,full_name:name,role:'owner'}); if(profileErr)throw profileErr;
-}
-async function bootstrap(){
-  try{
-    ensureClient(); const {data:{session:s}}=await sb.auth.getSession(); session=s;
-    if(!session){authShell();return;}
-    const {data:p,error}=await table('profiles').select('id,organization_id,full_name,role,organizations(name,phone,district)').eq('id',session.user.id).maybeSingle();
-    if(error)throw error; profile=p;
-    if(!profile?.organization_id){authShell('Your profile is missing a coaching-center workspace. Please sign out and create the account again.');return;}
-    await loadAll();
-    currentPage=localStorage.getItem(cacheKey)||'dashboard'; if(!Object.keys(icons).includes(currentPage))currentPage='dashboard'; render();
-  }catch(e){ document.getElementById('app').innerHTML=`<div class="fatal"><div class="brand-mark">EF</div><h1>EduFlow could not load</h1><p>${esc(e.message||'Unknown startup error')}</p><button class="btn btn-primary" onclick="location.reload()">Reload</button></div>`; }
-}
-async function loadAll(){
-  const oid=orgId();
-  const [studentsR,batchesR,teachersR,paymentsR,examsR,resultsR,attR,noticesR]=await Promise.all([
-    table('students').select('*, batches(id,name,subject,teacher_name,class_time,room)').eq('organization_id',oid).order('created_at',{ascending:false}),
-    table('batches').select('*').eq('organization_id',oid).order('created_at'),
-    table('teachers').select('*').eq('organization_id',oid).order('created_at'),
-    table('payments').select('*, students(name)').eq('organization_id',oid).order('paid_at',{ascending:false}),
-    table('exams').select('*').eq('organization_id',oid).order('exam_date',{ascending:false}),
-    table('results').select('*, students(name), exams(name,total_marks)').eq('organization_id',oid).order('created_at',{ascending:false}),
-    table('attendance').select('*').eq('organization_id',oid).order('attendance_date',{ascending:false}),
-    table('notices').select('*').eq('organization_id',oid).order('created_at',{ascending:false})
-  ]);
-  for(const r of [studentsR,batchesR,teachersR,paymentsR,examsR,resultsR,attR,noticesR]) if(r.error) throw r.error;
-  data.batches=batchesR.data||[]; data.teachers=teachersR.data||[]; data.payments=paymentsR.data||[]; data.exams=examsR.data||[]; data.results=resultsR.data||[]; data.attendance=attR.data||[]; data.notices=noticesR.data||[];
-  data.students=(studentsR.data||[]).map(s=>({ ...s, paid:data.payments.filter(p=>p.student_id===s.id).reduce((a,p)=>a+Number(p.amount||0),0), attendancePct: studentAttendancePct(s.id), latestResult: studentLatestResult(s.id)}));
-}
-function studentAttendancePct(studentId){ const rows=data.attendance.filter(a=>a.student_id===studentId); return rows.length?Math.round(rows.filter(a=>a.present).length/rows.length*100):100; }
-function studentLatestResult(studentId){ const r=data.results.find(x=>x.student_id===studentId); return r?Number(r.marks||0):0; }
-function riskFor(s){ return s.attendancePct<70 || s.latestResult<60 || s.paid < Number(s.monthly_fee||0) ? 'At Risk':'Active'; }
-function sortedResultsForExam(examId){ return data.results.filter(r=>r.exam_id===examId).sort((a,b)=>String(a.students?.name||'').localeCompare(String(b.students?.name||''))); }
-
-function render(){
-  localStorage.setItem(cacheKey,currentPage);
-  document.getElementById('app').innerHTML=`<div class="app"><aside class="sidebar" id="sidebar"><div class="brand"><div class="brand-mark">EF</div><div><strong>EduFlow</strong><small>Bangladesh • Coaching OS</small></div></div><nav class="nav">${nav('dashboard','Dashboard')}${nav('students','Students')}${nav('batches','Batches')}${nav('attendance','Attendance')}${nav('fees','Fees & Payments')}${nav('exams','Exams & Results')}${nav('teachers','Teachers')}${nav('notices','Notices')}${nav('settings','Settings')}</nav><div class="sidebar-bottom"><div class="muted">Workspace</div><strong>${esc(profile?.organizations?.name||'My Coaching Center')}</strong></div></aside><main class="main"><header class="topbar"><div style="display:flex;align-items:center;gap:10px"><button class="mobile-menu" onclick="toggleSidebar()">☰</button><div class="topbar-title">${pageTitle()}</div></div><div class="right"><span class="subtitle">${esc(profile?.full_name||'Admin')}</span><button class="btn btn-secondary btn-sm" onclick="logout()">Sign out</button></div></header><section class="container">${page()}</section></main></div>`;
+  document.getElementById('app').innerHTML=`<div class="app ${sidebarHidden?'sidebar-collapsed':''}"><aside class="sidebar" id="sidebar"><div class="brand"><div class="brand-mark">EF</div><div><strong>EduFlow</strong><small>Bangladesh • Coaching OS</small></div></div><nav class="nav"><div class="nav-group-title">Main</div>${nav('dashboard','Dashboard')}${nav('students','Students')}${nav('batches','Batches')}${nav('attendance','Attendance')}${nav('fees','Fees & Payments')}${nav('exams','Exams & Results')}${nav('teachers','Teachers')}${nav('notices','Notices')}<div class="nav-divider"></div><div class="nav-group-title">Administration</div>${nav('settings','Settings')}</nav><div class="sidebar-bottom"><div class="muted">Workspace</div><strong>${esc(profile?.organizations?.name||'My Coaching Center')}</strong></div><button class="sidebar-hide" onclick="toggleSidebarHidden()">⇥ Hide sidebar</button></aside><main class="main"><header class="topbar"><div style="display:flex;align-items:center;gap:10px"><button class="mobile-menu" onclick="${sidebarHidden?'toggleSidebarHidden()':'toggleSidebar()'}">☰</button><button class="desktop-sidebar-toggle btn btn-secondary btn-sm" onclick="toggleSidebarHidden()">${sidebarHidden?'☰ Show sidebar':'⇥ Hide sidebar'}</button><div class="topbar-title">${pageTitle()}</div></div><div class="right"><span class="subtitle">${esc(profile?.full_name||'Admin')}</span><button class="btn btn-secondary btn-sm" onclick="logout()">Sign out</button></div></header><section class="container">${page()}</section></main></div>`;
 }
 function page(){return currentPage==='dashboard'?dashboard():currentPage==='students'?students():currentPage==='batches'?batches():currentPage==='attendance'?attendance():currentPage==='fees'?fees():currentPage==='exams'?exams():currentPage==='teachers'?teachers():currentPage==='notices'?notices():settings();}
 function go(p){currentPage=p;closeModal();render();window.scrollTo({top:0,behavior:'smooth'});}
 function toggleSidebar(){document.getElementById('sidebar')?.classList.toggle('open');}
+function toggleSidebarHidden(){sidebarHidden=!sidebarHidden;localStorage.setItem(sidebarKey,sidebarHidden?'1':'0');render();}
 function stat(label,value,note,iconText){return `<div class="card stat"><div><div class="label">${label}</div><div class="value">${value}</div><div class="kpi-note">${note||''}</div></div><div class="iconbox">${iconText}</div></div>`;}
 
 function dashboard(){
