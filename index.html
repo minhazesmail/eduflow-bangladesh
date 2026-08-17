@@ -4,12 +4,21 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="description" content="EduFlow — Bangladesh-first coaching center management SaaS" />
+  <meta name="theme-color" content="#070b14" />
   <title>EduFlow — Coaching Center OS</title>
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-  <div id="app"></div>
+  <div id="app"><div class="boot"><div class="brand-mark">EF</div><div>Loading EduFlow…</div></div></div>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+    window.addEventListener('error', function (e) {
+      const root = document.getElementById('app');
+      if (root && root.querySelector('.boot')) {
+        root.innerHTML = '<div class="fatal"><div class="brand-mark">EF</div><h1>EduFlow could not start</h1><p>' + String(e.message || 'Unknown startup error').replace(/[<>]/g,'') + '</p><button onclick="location.reload()">Reload</button></div>';
+      }
+    });
+  </script>
   <script src="app.js"></script>
 </body>
 </html>
