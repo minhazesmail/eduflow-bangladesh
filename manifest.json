@@ -8,21 +8,7 @@
   "theme_color": "#020617",
   "orientation": "portrait-primary",
   "icons": [
-    {
-      "src": "/favicon.svg",
-      "sizes": "any",
-      "type": "image/svg+xml",
-      "purpose": "any"
-    },
-    {
-      "src": "/favicon-32.png",
-      "sizes": "32x32",
-      "type": "image/png"
-    },
-    {
-      "src": "/favicon.ico",
-      "sizes": "16x16 32x32",
-      "type": "image/x-icon"
-    }
+    {"src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable"},
+    {"src": "/favicon.ico", "sizes": "16x16 32x32", "type": "image/x-icon", "purpose": "any"}
   ]
 }
