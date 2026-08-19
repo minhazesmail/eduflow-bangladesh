@@ -1,51 +1,211 @@
-```html
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EduFlow — Coaching Center Management</title>
+
+  <!-- SEO / Social -->
+  <meta name="description" content="Bangladesh-first SaaS for coaching center management. Students, batches, attendance, fees, exams, and team — all in one calm workspace.">
+  <meta name="keywords" content="coaching center management, coaching software Bangladesh, tuition center SaaS, EduFlow">
+  <meta name="author" content="EduFlow Bangladesh">
   <meta name="theme-color" content="#020617">
-  <meta name="description" content="EduFlow — Bangladesh-first coaching center management SaaS for students, attendance, fees, exams, communication, and team management.">
-  <meta property="og:title" content="EduFlow — Run your coaching center in one calm workspace">
-  <meta property="og:description" content="Manage students, attendance, fees, exams, teachers and guardian communication from one Bangladesh-first coaching OS.">
+
+  <!-- Open Graph -->
+  <meta property="og:title" content="EduFlow — Coaching Center Management">
+  <meta property="og:description" content="Run your coaching center in one calm workspace.">
   <meta property="og:type" content="website">
-  <meta property="og:image" content="favicon.svg">
-  <meta name="twitter:card" content="summary">
-  <meta name="twitter:title" content="EduFlow — Coaching Center OS for Bangladesh">
-  <meta name="twitter:description" content="Manage students, attendance, fees, exams, teachers and guardian communication from one Bangladesh-first coaching OS.">
-  <link rel="icon" type="image/svg+xml" href="favicon.svg">
-  <link rel="icon" type="image/x-icon" href="favicon.ico">
-  <link rel="apple-touch-icon" href="favicon.svg">
-  <title>EduFlow — Coaching Center OS for Bangladesh</title>
-  <link rel="stylesheet" href="landing.css">
+  <meta property="og:image" content="/og-image.png">
+
+  <!-- Twitter -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="EduFlow — Coaching Center Management">
+  <meta name="twitter:description" content="Run your coaching center in one calm workspace.">
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%23020617'/%3E%3Ctext x='50' y='68' font-size='55' text-anchor='middle' fill='%2321d4ff'%3E📚%3C/text%3E%3C/svg%3E">
+  <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'%3E%3Crect width='180' height='180' rx='36' fill='%23020617'/%3E%3Ctext x='90' y='125' font-size='100' text-anchor='middle' fill='%2321d4ff'%3E📚%3C/text%3E%3C/svg%3E">
+
+  <!-- PWA -->
+  <link rel="manifest" href="/manifest.json">
+
+  <!-- Preconnect -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+
+  <!-- Styles -->
+  <link rel="stylesheet" href="styles.css">
+
+  <!-- Supabase -->
+  <script src="https://unpkg.com/@supabase/supabase-js@2/dist/umd/supabase.min.js" defer></script>
+
+  <!-- Config (loads before app) -->
+  <script src="config.js"></script>
+
+  <!-- App modules -->
+  <script src="rbac.js" defer></script>
+  <script src="team.js" defer></script>
+  <script src="app.js" defer></script>
 </head>
 <body>
-  <div class="site-shell">
-    <header class="site-header">
-      <a class="brand" href="#top" aria-label="EduFlow home">
-        <span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 64 64"><path fill="currentColor" d="M21 11c-3-7 1-10 5-8 5 2 6 10 5 16 3-2 6-3 10-3 9 0 16 7 16 16 0 10-7 17-18 17h-8c-4 0-8-1-11-4-3 2-7 2-10 0-3-2-4-6-2-8 2-2 6-3 10-2-1-3-1-6 0-9 2-6 7-10 13-11-3-2-8-1-10-4Zm6 7c2-3 2-10-1-11-2-1-2 4-1 7 .3 2 1 3 2 4Zm13 10c-2 0-4 1-4 3s2 3 4 3 4-1 4-3-2-3-4-3Zm-17 7c-2 0-4 1-4 3s2 3 4 3 4-1 4-3-2-3-4-3Zm7 8c3 2 7 2 10 0-2 5-8 6-10 0Z"/></svg></span>
-        <span><strong>EduFlow</strong><small>Bangladesh • Coaching OS</small></span>
-      </a>
-      <nav class="nav-links" aria-label="Main navigation">
-        <a href="#features">Features</a>
-        <a href="#workflow">How it works</a>
-        <a href="#roles">For your team</a>
-        <a href="#contact">Contact</a>
-      </nav>
-      <div class="header-actions">
-        <a class="btn btn-ghost" href="app.html">Sign in</a>
-        <a class="btn btn-primary" href="app.html?mode=signup">Register your Coaching Center</a>
-      </div>
-      <button class="menu-toggle" type="button" aria-label="Open menu" aria-expanded="false" onclick="toggleMenu()">☰</button>
-    </header>
+  <!-- Loading screen -->
+  <div id="loading-screen" class="loading-screen">
+    <div class="loading-content">
+      <div class="loading-logo">📚</div>
+      <div class="loading-title">EduFlow</div>
+      <div class="loading-bar"><div class="loading-bar-fill"></div></div>
+    </div>
+  </div>
 
-    <main id="top">
-      <!-- Rest of your existing index.html content remains the same -->
-      <!-- [Your existing content here - I kept it unchanged except for the head section] -->
+  <!-- Auth screen -->
+  <div id="auth-screen" class="hidden">
+    <div class="auth-shell">
+      <div class="auth-card card">
+        <div class="auth-brand">
+          <span style="font-size:28px">📚</span>
+          <div>
+            <strong>EduFlow</strong>
+            <div style="font-size:11px;color:var(--muted)">Bangladesh • Coaching OS</div>
+          </div>
+        </div>
+
+        <div id="auth-form">
+          <h1 id="auth-title">Sign in</h1>
+          <p class="sub" id="auth-sub">Welcome back to your coaching workspace.</p>
+
+          <form id="auth-form-el" onsubmit="return false;">
+            <div class="field" style="margin-bottom:14px">
+              <label>Email</label>
+              <input type="email" id="auth-email" placeholder="you@coaching.com" required autocomplete="email">
+            </div>
+            <div class="field" style="margin-bottom:14px">
+              <label>Password</label>
+              <input type="password" id="auth-password" placeholder="••••••••" required autocomplete="current-password" minlength="8">
+            </div>
+
+            <!-- Registration fields (hidden by default) -->
+            <div id="register-fields" class="hidden">
+              <div class="field" style="margin-bottom:14px">
+                <label>Full Name</label>
+                <input type="text" id="auth-fullname" placeholder="Your full name" autocomplete="name">
+              </div>
+              <div class="field" style="margin-bottom:14px">
+                <label>Coaching Center Name</label>
+                <input type="text" id="auth-orgname" placeholder="e.g. ABC Coaching Center" autocomplete="organization">
+              </div>
+            </div>
+
+            <button type="submit" id="auth-btn" class="btn btn-primary" style="width:100%;margin-top:6px">
+              Sign in
+            </button>
+          </form>
+
+          <div style="text-align:center;margin-top:16px;font-size:13px;color:var(--muted)">
+            <span id="auth-toggle-text">New here?</span>
+            <button id="auth-toggle" class="btn-link" style="background:none;border:none;color:var(--blue);font-weight:700;cursor:pointer">
+              Register your center
+            </button>
+          </div>
+
+          <div id="auth-error" class="auth-error hidden"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main app -->
+  <div id="app-shell" class="app hidden">
+    <!-- Sidebar -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-inner">
+        <div class="brand">
+          <span style="font-size:28px">📚</span>
+          <div>
+            <strong>EduFlow</strong>
+            <small>Bangladesh • Coaching OS</small>
+          </div>
+        </div>
+
+        <div class="workspace">
+          <div class="eyebrow">Workspace</div>
+          <strong id="org-name">Loading…</strong>
+          <span class="role-chip" id="user-role">Loading…</span>
+        </div>
+
+        <nav class="nav" id="main-nav">
+          <div class="nav-section">Operations</div>
+          <button data-page="dashboard" class="active"><span class="ico">🏠</span> Dashboard</button>
+          <button data-page="students"><span class="ico">👨‍🎓</span> Students</button>
+          <button data-page="batches"><span class="ico">📦</span> Batches</button>
+          <button data-page="attendance"><span class="ico">✅</span> Attendance</button>
+          <button data-page="payments"><span class="ico">💰</span> Fees & Payments</button>
+          <button data-page="exams"><span class="ico">📝</span> Exams & Results</button>
+          <button data-page="teachers"><span class="ico">👨‍🏫</span> Teachers</button>
+          <button data-page="notices"><span class="ico">📢</span> Notices</button>
+
+          <div class="nav-section">Administration</div>
+          <button data-page="team" id="nav-team"><span class="ico">👥</span> Team</button>
+          <button data-page="billing" id="nav-billing"><span class="ico">💳</span> Billing</button>
+          <button data-page="settings"><span class="ico">⚙️</span> Settings</button>
+          <button data-page="audit"><span class="ico">📋</span> Audit Log</button>
+        </nav>
+
+        <div class="sidebar-bottom">
+          <div class="profile-mini">
+            <div style="width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,var(--neon),var(--neon2));display:grid;place-items:center;font-weight:800;font-size:13px;color:#fff" id="user-avatar">?</div>
+            <div style="min-width:0">
+              <strong id="user-name">Loading…</strong>
+              <span id="user-email">Loading…</span>
+            </div>
+          </div>
+          <button id="logout-btn" class="btn btn-secondary btn-sm" style="width:100%;margin-top:8px">Sign out</button>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main content -->
+    <main class="main">
+      <header class="topbar">
+        <div class="topbar-left">
+          <button class="mobile-toggle" id="mobile-toggle">☰</button>
+          <div>
+            <div class="page-title" id="page-title">Dashboard</div>
+            <div class="top-role" id="top-role">Loading…</div>
+          </div>
+        </div>
+        <div class="top-actions">
+          <div class="usage-badge" id="usage-badge" title="Monthly usage">
+            <span id="usage-text">Free Plan</span>
+          </div>
+          <button class="btn btn-secondary btn-sm" id="refresh-btn">🔄 Refresh</button>
+        </div>
+      </header>
+
+      <div class="container" id="page-content">
+        <!-- Pages rendered here -->
+      </div>
     </main>
 
-    <footer class="site-footer"><div class="brand"><span class="brand-mark">◈</span><span><strong>EduFlow</strong><small>Bangladesh • Coaching OS</small></span></div><span>© 2026 EduFlow. Built for coaching centers in Bangladesh.</span><a href="app.html">Open app →</a></footer>
+    <!-- Mobile nav -->
+    <nav class="mobile-nav" id="mobile-nav">
+      <button data-page="dashboard" class="active">🏠<br>Home</button>
+      <button data-page="students">👨‍🎓<br>Students</button>
+      <button data-page="payments">💰<br>Fees</button>
+      <button data-page="exams">📝<br>Exams</button>
+      <button data-page="settings">⚙️<br>More</button>
+    </nav>
   </div>
-  <script>function toggleMenu(){const n=document.querySelector('.nav-links');const b=document.querySelector('.menu-toggle');n.classList.toggle('open');b.setAttribute('aria-expanded',n.classList.contains('open'))}document.querySelectorAll('.nav-links a').forEach(a=>a.addEventListener('click',()=>{document.querySelector('.nav-links')?.classList.remove('open');document.querySelector('.menu-toggle')?.setAttribute('aria-expanded','false')}));</script>
+
+  <!-- Modal container -->
+  <div id="modal-root"></div>
+
+  <!-- Toast container -->
+  <div id="toast-root"></div>
+
+  <!-- Offline indicator -->
+  <div id="offline-banner" class="offline-banner hidden">
+    ⚠️ You are offline. Some features may not work until you reconnect.
+  </div>
 </body>
 </html>
