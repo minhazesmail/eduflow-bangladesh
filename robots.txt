@@ -1,6 +1,4 @@
 User-agent: *
 Allow: /
-Sitemap: https://eduflow-bangladesh.vercel.app/sitemap.xml
 
-# Crawl delay for polite crawling
-Crawl-delay: 2
+Sitemap: https://eduflow-bangladesh.vercel.app/sitemap.xml
