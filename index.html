@@ -2,106 +2,42 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#020617">
-  <!-- Favicon / browser tab icon: use the committed SVG so Vercel never references a missing PNG. -->
+  <meta name="description" content="EduFlow — Bangladesh-first coaching center management SaaS for students, attendance, fees, exams, team management and guardian communication.">
+  <meta property="og:title" content="EduFlow — Coaching Center OS for Bangladesh">
+  <meta property="og:description" content="Run your coaching center without the spreadsheet chaos. Students, attendance, fees, exams and team management in one workspace.">
+  <meta property="og:type" content="website">
+  <meta property="og:image" content="/favicon.svg">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="EduFlow — Coaching Center OS for Bangladesh">
+  <meta name="twitter:description" content="A calmer workspace for coaching centers in Bangladesh.">
+  <meta name="twitter:image" content="/favicon.svg">
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
   <link rel="alternate icon" href="/favicon.ico" sizes="any">
   <link rel="apple-touch-icon" href="/favicon.svg">
   <link rel="manifest" href="/manifest.json">
-  <meta name="msapplication-TileColor" content="#020617">
-
-  <meta name="description" content="EduFlow — Bangladesh-first coaching center management SaaS for students, attendance, fees, exams, communication, and team management.">
-  <meta property="og:title" content="EduFlow — Run your coaching center in one calm workspace">
-  <meta property="og:description" content="Manage students, attendance, fees, exams, teachers and guardian communication from one Bangladesh-first coaching OS.">
-  <meta property="og:type" content="website">
-  <meta property="og:image" content="/favicon.svg">
-  <meta name="twitter:card" content="summary">
   <title>EduFlow — Coaching Center OS for Bangladesh</title>
   <link rel="stylesheet" href="landing.css">
 </head>
 <body>
   <div class="site-shell">
     <header class="site-header">
-      <a class="brand" href="#top" aria-label="EduFlow home">
-        <span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 64 64"><path fill="currentColor" d="M21 11c-3-7 1-10 5-8 5 2 6 10 5 16 3-2 6-3 10-3 9 0 16 7 16 16 0 10-7 17-18 17h-8c-4 0-8-1-11-4-3 2-7 2-10 0-3-2-4-6-2-8 2-2 6-3 10-2-1-3-1-6 0-9 2-6 7-10 13-11-3-2-8-1-10-4Zm6 7c2-3 2-10-1-11-2-1-2 4-1 7 .3 2 1 3 2 4Zm13 10c-2 0-4 1-4 3s2 3 4 3 4-1 4-3-2-3-4-3Zm-17 7c-2 0-4 1-4 3s2 3 4 3 4-1 4-3-2-3-4-3Zm7 8c3 2 7 2 10 0-2 5-8 6-10 0Z"/></svg></span>
-        <span><strong>EduFlow</strong><small>Bangladesh • Coaching OS</small></span>
-      </a>
-      <nav class="nav-links" aria-label="Main navigation">
-        <a href="#features">Features</a>
-        <a href="#workflow">How it works</a>
-        <a href="#roles">For your team</a>
-        <a href="#contact">Contact</a>
-      </nav>
-      <div class="header-actions">
-        <a class="btn btn-ghost" href="app.html">Sign in</a>
-        <a class="btn btn-primary" href="app.html?mode=signup">Register your Coaching Center</a>
-      </div>
+      <a class="brand" href="#top" aria-label="EduFlow home"><span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 64 64"><path fill="currentColor" d="M21 11c-3-7 1-10 5-8 5 2 6 10 5 16 3-2 6-3 10-3 9 0 16 7 16 16 0 10-7 17-18 17h-8c-4 0-8-1-11-4-3 2-7 2-10 0-3-2-4-6-2-8 2-2 6-3 10-2-1-3-1-6 0-9 2-6 7-10 13-11-3-2-8-1-10-4Zm6 7c2-3 2-10-1-11-2-1-2 4-1 7 .3 2 1 3 2 4Zm13 10c-2 0-4 1-4 3s2 3 4 3 4-1 4-3-2-3-4-3Zm-17 7c-2 0-4 1-4 3s2 3 4 3 4-1 4-3-2-3-4-3Zm7 8c3 2 7 2 10 0-2 5-8 6-10 0Z"/></svg></span><span><strong>EduFlow</strong><small>Bangladesh • Coaching OS</small></span></a>
+      <nav class="nav-links" aria-label="Main navigation"><a href="#features">Features</a><a href="#workflow">How it works</a><a href="#roles">For your team</a><a href="#contact">Contact</a></nav>
+      <div class="header-actions"><a class="btn btn-ghost" href="app.html">Sign in</a><a class="btn btn-primary" href="app.html?mode=signup">Register your Coaching Center</a></div>
       <button class="menu-toggle" type="button" aria-label="Open menu" aria-expanded="false" onclick="toggleMenu()">☰</button>
     </header>
-
     <main id="top">
-      <section class="hero section">
-        <div class="hero-copy">
-          <div class="eyebrow"><span class="dot"></span>Built for coaching centers in Bangladesh</div>
-          <h1>Run your coaching center without the spreadsheet chaos.</h1>
-          <p class="hero-text">EduFlow brings students, batches, attendance, fees, exams, teachers, team access and guardian communication into one calm workspace.</p>
-          <div class="hero-actions">
-            <a class="btn btn-primary btn-lg" href="app.html?mode=signup">Register your Coaching Center <span>→</span></a>
-            <a class="btn btn-ghost btn-lg" href="#features">See what it does</a>
-          </div>
-          <p class="hero-note">Owner registration only. Teachers and staff join through an invitation.</p>
-          <div class="trust-row"><span>৳ BDT-ready</span><span>•</span><span>bKash / Nagad friendly</span><span>•</span><span>Role-based access</span></div>
-        </div>
-        <div class="hero-visual" aria-label="EduFlow dashboard preview">
-          <div class="glow"></div>
-          <div class="window-card">
-            <div class="window-top"><span class="window-dot"></span><span class="window-dot"></span><span class="window-dot"></span><span class="window-title">EduFlow Dashboard</span></div>
-            <div class="window-body">
-              <div class="dash-top"><div><div class="eyebrow">Workspace</div><strong>ABC Coaching Center</strong></div><span class="role-chip">OWNER</span></div>
-              <div class="stat-row"><div class="stat"><span>Students</span><strong>482</strong><small>+24 this month</small></div><div class="stat"><span>Attendance</span><strong>91%</strong><small>Today</small></div><div class="stat"><span>Collected</span><strong>৳ 3.84L</strong><small>August</small></div></div>
-              <div class="panel-row"><div class="panel"><div class="panel-h">Students needing attention</div><div class="list-item"><span class="avatar">RA</span><div><strong>Rahim Ahmed</strong><small>Class 10 • 62% attendance</small></div><span class="tag warn">Needs attention</span></div><div class="list-item"><span class="avatar">NS</span><div><strong>Nusrat Sultana</strong><small>HSC • 47% result</small></div><span class="tag warn">Needs attention</span></div></div><div class="panel"><div class="panel-h">Fees · August</div><div class="fee-bar"><div class="fee-fill" style="width:78%"></div></div><div class="fee-meta"><span>Collected <strong>78%</strong></span><span>৳ 3,84,500 collected · ৳ 1,08,000 due</span></div></div></div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section class="section value-strip">
-        <div class="value-item"><strong>One place for the daily work</strong><p>From first admission to monthly fee reminders.</p></div>
-        <div class="value-item"><strong>Designed around Bangladeshi workflows</strong><p>৳ BDT, local payment methods and guardian-first communication.</p></div>
-        <div class="value-item"><strong>Secure by default</strong><p>Workspace-isolated data and role-based access.</p></div>
-      </section>
-
-      <section id="features" class="section">
-        <div class="section-heading"><div class="eyebrow">Everything your center needs</div><h2>Less admin work. More time for teaching.</h2><p>EduFlow covers the operational layer behind a modern coaching center.</p></div>
-        <div class="feature-grid">
-          <article class="feature-card featured"><span class="feature-icon">♙</span><h3>Student 360</h3><p>See guardian details, batch, attendance, results, invoices and receipts from one student profile.</p></article>
-          <article class="feature-card"><span class="feature-icon">✓</span><h3>Attendance</h3><p>Mark a class roll quickly and spot repeated absence patterns before they become a problem.</p></article>
-          <article class="feature-card"><span class="feature-icon">৳</span><h3>Fees & payments</h3><p>Track monthly invoices, partial payments, balances, receipts and payment references.</p></article>
-          <article class="feature-card"><span class="feature-icon">▣</span><h3>Exams & results</h3><p>Create exams, enter marks, review performance and identify students who need attention.</p></article>
-          <article class="feature-card"><span class="feature-icon">✉</span><h3>Communication</h3><p>Prepare personalized guardian messages for a batch, selected students or your whole center.</p></article>
-          <article class="feature-card"><span class="feature-icon">♟</span><h3>Team roles</h3><p>Keep owners, admins, teachers and staff in the right lanes with role-based permissions.</p></article>
-        </div>
-      </section>
-
-      <section id="workflow" class="section section-alt">
-        <div class="section-heading"><div class="eyebrow">A calmer daily rhythm</div><h2>One workflow from classroom to office.</h2></div>
-        <div class="steps"><div class="step"><span>01</span><div><h3>Set up your center</h3><p>Register once, create your batches and invite your team.</p></div></div><div class="step"><span>02</span><div><h3>Run the classroom</h3><p>Take attendance, manage students and record exam performance.</p></div></div><div class="step"><span>03</span><div><h3>Close the month</h3><p>Generate dues, record collections and prepare guardian reminders.</p></div></div></div>
-      </section>
-
-      <section id="roles" class="section section-light">
-        <div class="section-heading"><div class="eyebrow">Built for the whole center</div><h2>Everyone sees the work they need.</h2></div>
-        <div class="role-grid"><div><span class="role-chip">OWNER</span><h3>Full control</h3><p>Workspace settings, team management, finance, academics and communication.</p></div><div><span class="role-chip">ADMIN</span><h3>Run the center</h3><p>Students, batches, attendance, fees, exams, results and day-to-day operations.</p></div><div><span class="role-chip">TEACHER</span><h3>Focus on teaching</h3><p>Attendance, exams, results and the student context needed in class.</p></div><div><span class="role-chip">STAFF</span><h3>Keep operations moving</h3><p>Student records, attendance, fees and the workflows that keep the office running.</p></div></div>
-      </section>
-
-      <section id="contact" class="section cta">
-        <div><div class="eyebrow">Ready to simplify the center?</div><h2>Start with your coaching center, not a complicated ERP.</h2><p>Register the workspace once. Invite the team. Run the day from one place.</p></div>
-        <div class="cta-actions"><a class="btn btn-primary btn-lg" href="app.html?mode=signup">Register your Coaching Center →</a><a class="btn btn-ghost btn-lg on-dark" href="app.html">Already have an account? Sign in</a></div>
-      </section>
+      <section class="hero section"><div class="hero-copy"><div class="eyebrow"><span class="dot"></span>Built for coaching centers in Bangladesh</div><h1>Run your coaching center without the spreadsheet chaos.</h1><p class="hero-text">EduFlow brings students, batches, attendance, fees, exams, teachers, team access and guardian communication into one calm workspace.</p><div class="hero-actions"><a class="btn btn-primary btn-lg" href="app.html?mode=signup">Register your Coaching Center <span>→</span></a><a class="btn btn-ghost btn-lg" href="#features">See what it does</a></div><p class="hero-note">Owner registration only. Teachers and staff join through an invitation.</p><div class="trust-row"><span>৳ BDT-ready</span><span>•</span><span>Local payment friendly</span><span>•</span><span>Role-based access</span></div></div><div class="hero-visual" aria-label="EduFlow dashboard preview"><div class="glow"></div><div class="window-card"><div class="window-top"><span class="window-dot"></span><span class="window-dot"></span><span class="window-dot"></span><span class="window-title">EduFlow Dashboard</span></div><div class="window-body"><div class="dash-top"><div><div class="eyebrow">Workspace</div><strong>ABC Coaching Center</strong></div><span class="role-chip">OWNER</span></div><div class="stat-row"><div class="stat"><span>Students</span><strong>482</strong><small>+24 this month</small></div><div class="stat"><span>Attendance</span><strong>91%</strong><small>Today</small></div><div class="stat"><span>Collected</span><strong>৳ 3.84L</strong><small>August</small></div></div><div class="panel-row"><div class="panel"><div class="panel-h">Students needing attention</div><div class="list-item"><span class="avatar">RA</span><div><strong>Rahim Ahmed</strong><small>Class 10 • 62% attendance</small></div><span class="tag warn">Needs attention</span></div><div class="list-item"><span class="avatar">NS</span><div><strong>Nusrat Sultana</strong><small>HSC • 47% result</small></div><span class="tag warn">Needs attention</span></div></div><div class="panel"><div class="panel-h">Fees · August</div><div class="fee-bar"><div class="fee-fill" style="width:78%"></div></div><div class="fee-meta"><span>Collected <strong>78%</strong></span><span>৳ 3,84,500 collected · ৳ 1,08,000 due</span></div></div></div></div></div></div></section>
+      <section class="section value-strip"><div class="value-item"><strong>One place for the daily work</strong><p>From first admission to monthly fee reminders.</p></div><div class="value-item"><strong>Designed around Bangladeshi workflows</strong><p>৳ BDT, local payment methods and guardian-first communication.</p></div><div class="value-item"><strong>Secure by default</strong><p>Workspace-isolated data and role-based access.</p></div></section>
+      <section id="features" class="section"><div class="section-heading"><div class="eyebrow">Everything your center needs</div><h2>Less admin work. More time for teaching.</h2><p>EduFlow covers the operational layer behind a modern coaching center.</p></div><div class="feature-grid"><article class="feature-card featured"><span class="feature-icon">♙</span><h3>Student 360</h3><p>See guardian details, batch, attendance, results and fees from one student profile.</p></article><article class="feature-card"><span class="feature-icon">✓</span><h3>Attendance</h3><p>Mark a class roll quickly and spot repeated absence patterns.</p></article><article class="feature-card"><span class="feature-icon">৳</span><h3>Fees & payments</h3><p>Track collections, receipts, balances and payment references.</p></article><article class="feature-card"><span class="feature-icon">▣</span><h3>Exams & results</h3><p>Create exams, enter marks, review performance and identify support needs.</p></article><article class="feature-card"><span class="feature-icon">✉</span><h3>Communication</h3><p>Prepare personalized guardian messages for the students you need to reach.</p></article><article class="feature-card"><span class="feature-icon">♟</span><h3>Team roles</h3><p>Keep owners, admins, teachers and staff in the right lanes.</p></article></div></section>
+      <section id="workflow" class="section section-alt"><div class="section-heading"><div class="eyebrow">A calmer daily rhythm</div><h2>One workflow from classroom to office.</h2></div><div class="steps"><div class="step"><span>01</span><div><h3>Set up your center</h3><p>Register once and create your batches.</p></div></div><div class="step"><span>02</span><div><h3>Run the classroom</h3><p>Take attendance, manage students and record results.</p></div></div><div class="step"><span>03</span><div><h3>Close the month</h3><p>Record collections and prepare follow-ups.</p></div></div></div></section>
+      <section id="roles" class="section section-light"><div class="section-heading"><div class="eyebrow">Built for the whole center</div><h2>Everyone sees the work they need.</h2></div><div class="role-grid"><div><span class="role-chip">OWNER</span><h3>Full control</h3><p>Workspace settings, team management, finance and academics.</p></div><div><span class="role-chip">ADMIN</span><h3>Run the center</h3><p>Students, batches, attendance, fees, exams and daily operations.</p></div><div><span class="role-chip">TEACHER</span><h3>Focus on teaching</h3><p>Attendance, exams, results and student context.</p></div><div><span class="role-chip">STAFF</span><h3>Keep operations moving</h3><p>Student records, attendance, fees and office workflows.</p></div></div></section>
+      <section id="contact" class="section cta"><div><div class="eyebrow">Ready to simplify the center?</div><h2>Start with your coaching center, not a complicated ERP.</h2><p>Register the workspace once. Run the day from one place.</p></div><div class="cta-actions"><a class="btn btn-primary btn-lg" href="app.html?mode=signup">Register your Coaching Center →</a><a class="btn btn-ghost btn-lg on-dark" href="app.html">Already have an account? Sign in</a></div></section>
     </main>
-
     <footer class="site-footer"><div class="brand"><span class="brand-mark">◦</span><span><strong>EduFlow</strong><small>Bangladesh • Coaching OS</small></span></div><span>© 2026 EduFlow. Built for coaching centers in Bangladesh.</span><a href="app.html">Open app →</a></footer>
   </div>
-  <script>function toggleMenu(){const n=document.querySelector('.nav-links');const b=document.querySelector('.menu-toggle');n.classList.toggle('open');b.setAttribute('aria-expanded',n.classList.contains('open'))}document.querySelectorAll('.nav-links a').forEach(a=>a.addEventListener('click',()=>{document.querySelector('.nav-links')?.classList.remove('open');document.querySelector('.menu-toggle')?.setAttribute('aria-expanded','false')}));</script>
+  <script>function toggleMenu(){const n=document.querySelector('.nav-links'),b=document.querySelector('.menu-toggle');n.classList.toggle('open');b.setAttribute('aria-expanded',n.classList.contains('open'))}document.querySelectorAll('.nav-links a').forEach(a=>a.addEventListener('click',()=>{document.querySelector('.nav-links')?.classList.remove('open');document.querySelector('.menu-toggle')?.setAttribute('aria-expanded','false')}));</script>
 </body>
 </html>
