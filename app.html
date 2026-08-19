@@ -12,11 +12,6 @@
   <meta name="msapplication-TileColor" content="#020617">
 
   <meta name="description" content="EduFlow — Bangladesh-first coaching center management SaaS">
-  <meta property="og:title" content="EduFlow — Coaching Center Management">
-  <meta property="og:description" content="Manage students, attendance, fees, exams, teachers and guardian communication in one workspace.">
-  <meta property="og:type" content="website">
-  <meta property="og:image" content="/favicon.svg">
-  <meta name="twitter:card" content="summary">
   <title>EduFlow App</title>
   <link rel="stylesheet" href="styles.css">
 </head>
@@ -37,7 +32,10 @@
   <script src="password-recovery.js"></script>
   <script>
     window.addEventListener('load', () => {
-      if (window.EduFlow && typeof window.EduFlow.init === 'function') window.EduFlow.init();
+      if (new URLSearchParams(location.search).get('mode') === 'signup' && typeof authMode !== 'undefined') {
+        authMode = 'signup';
+        authScreen();
+      }
     });
   </script>
 </body>
