@@ -1,14 +1,15 @@
 {
-  "name": "EduFlow — Coaching Center Management",
+  "name": "EduFlow — Coaching Center OS for Bangladesh",
   "short_name": "EduFlow",
   "description": "Bangladesh-first SaaS for coaching center management",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#020617",
-  "theme_color": "#020617",
+  "background_color": "#06142a",
+  "theme_color": "#06142a",
   "orientation": "portrait-primary",
   "icons": [
-    {"src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable"},
-    {"src": "/favicon.ico", "sizes": "16x16 32x32", "type": "image/x-icon", "purpose": "any"}
+    {"src":"/eduflow-icon.svg","sizes":"any","type":"image/svg+xml","purpose":"any maskable"},
+    {"src":"/favicon.svg","sizes":"any","type":"image/svg+xml","purpose":"any"},
+    {"src":"/favicon.ico","sizes":"16x16 32x32","type":"image/x-icon","purpose":"any"}
   ]
 }
