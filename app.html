@@ -14,12 +14,14 @@
   <link rel="manifest" href="/manifest.json">
   <title>EduFlow App</title>
   <link rel="stylesheet" href="styles.css">
+  <script src="config.js"></script>
   <script>
-    // Critical boot fallback: keeps the static app independent of runtime env injection.
-    window.eduflowConfig = Object.freeze({
+    // Static-host fallback. config.js is authoritative when available.
+    window.eduflowConfig = window.eduflowConfig || Object.freeze({
       supabaseUrl: 'https://tljxhsspwabeslpbyiif.supabase.co',
       supabaseKey: 'sb_publishable_LhIRXury0u3KuwbT7RApdQ_rsMFM-tm',
       appEnv: 'production',
+      isDemo: new URLSearchParams(window.location.search).get('demo') === 'true',
       rateLimitMax: 100,
       rateLimitWindow: 60000,
       limits: { free: 50, pro: 500, enterprise: 5000 }
@@ -51,6 +53,8 @@
   </div>
   <div id="modal-root"></div><div id="toast-root"></div>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="mock-data.js"></script>
+  <script src="demo-mode.js"></script>
   <script src="app-core.js"></script>
 </body>
 </html>
