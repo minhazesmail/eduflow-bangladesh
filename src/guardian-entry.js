@@ -3,6 +3,7 @@ import '../brand-refresh.css';
 import '../guardian.css';
 import '../config.js';
 import './supabase-global.js';
+import './security-sanitize.js';
 
 (() => {
   'use strict';
@@ -19,6 +20,7 @@ import './supabase-global.js';
     div.textContent = value == null ? '' : String(value);
     return div.innerHTML;
   };
+  const sanitizeHtml = window.EduFlowSecurity?.sanitizeHtml || escapeHtml;
   const money = (value) => `৳${Number(value || 0).toLocaleString('en-BD')}`;
   const query = async (promise) => {
     const result = await promise;
@@ -67,7 +69,7 @@ import './supabase-global.js';
       }).join('');
 
       const noticeHtml = notices.length
-        ? notices.map((notice) => `<div class="portal-row"><span><strong>${escapeHtml(notice.title)}</strong><br><span class="subtitle">${escapeHtml(notice.body)}</span></span><span class="subtitle">${new Date(notice.created_at).toLocaleDateString('en-BD')}</span></div>`).join('')
+        ? notices.map((notice) => `<div class="portal-row"><span><strong>${escapeHtml(notice.title)}</strong><br><span class="subtitle notice-rich-text">${sanitizeHtml(notice.body || '')}</span></span><span class="subtitle">${new Date(notice.created_at).toLocaleDateString('en-BD')}</span></div>`).join('')
         : '<div class="empty">No notices.</div>';
 
       root.innerHTML = `<div class="portal-grid"><section class="portal-card"><div class="label">Guardian</div><h2>${escapeHtml(guardian.full_name)}</h2><div class="subtitle">${escapeHtml(guardian.phone || guardian.email || '')}</div></section><section class="portal-card"><div class="label">Students</div><div class="value">${students.length}</div></section><section class="portal-card"><div class="label">Recent payments</div><div class="value">${money(payments.reduce((total, item) => total + Number(item.amount || 0), 0))}</div></section><section class="portal-card"><div class="label">Language</div><div class="value" style="font-size:20px">${escapeHtml(guardian.preferred_language || 'bn')}</div></section>${studentCards}<section class="portal-card portal-wide"><h2>Notices</h2><div class="portal-list">${noticeHtml}</div></section></div>`;
