@@ -7,6 +7,7 @@ import '../config.js';
 import './supabase-global.js';
 import './security-sanitize.js';
 import './i18n.js';
+import './site-language-v2.js';
 import '../dev-access.js';
 import '../branch-context.js';
 import '../runtime-stability.js';
@@ -29,35 +30,18 @@ import './i18n-app-bridge.js';
 import './app-core-sms-patch.js';
 import './attrition-ui.js';
 
-// Wire language toggle + initial static apply
 (function () {
   const i18n = window.EduFlowI18n;
   if (!i18n) return;
-
-  function wireToggles() {
-    const handler = () => {
-      i18n.toggleLang();
-      i18n.applyStatic();
-      if (window.EduFlow?.navigateTo && location.hash) {
-        const page = location.hash.slice(1) || 'dashboard';
-        window.EduFlow.navigateTo(page);
-      } else if (window.EduFlow?.navigateTo) {
-        window.EduFlow.navigateTo('dashboard');
-      }
-    };
+  const handler = () => {
+    i18n.toggleLang();
+    i18n.applyStatic();
+    window.EduFlowSiteLanguageV2?.apply?.();
+    if (window.EduFlow?.navigateTo) window.EduFlow.navigateTo(location.hash.slice(1) || 'dashboard');
+  };
+  const wire = () => {
     document.getElementById('lang-toggle')?.addEventListener('click', handler);
     document.getElementById('lang-toggle-top')?.addEventListener('click', handler);
-  }
-
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => {
-      i18n.applyStatic();
-      wireToggles();
-    });
-  } else {
-    i18n.applyStatic();
-    wireToggles();
-  }
-
-  window.addEventListener('eduflow:langchange', () => i18n.applyStatic());
+  };
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', wire); else wire();
 })();
