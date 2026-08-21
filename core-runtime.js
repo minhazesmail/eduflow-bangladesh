@@ -1,4 +1,4 @@
-/* EduFlow shared runtime: exactly one Supabase client per page. */
+/* EduFlow shared runtime: exactly one Supabase client per page, plus hard removal of stale AI routes. */
 (function () {
   'use strict';
 
@@ -33,4 +33,22 @@
       return data.session || null;
     }
   });
+
+  // AI was retired. Stop stale links/routes before feature routers can consume them.
+  document.addEventListener('click', (event) => {
+    const target = event.target instanceof Element
+      ? event.target.closest('[data-growth-page="assistant"],[data-growth-action="open-assistant"],a[href="#assistant"]')
+      : null;
+    if (!target) return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    location.hash = '#attention';
+  }, true);
+
+  window.addEventListener('hashchange', (event) => {
+    if (location.hash.replace(/^#\/?/, '') !== 'assistant') return;
+    event.stopImmediatePropagation();
+    history.replaceState(null, '', '#attention');
+    window.dispatchEvent(new Event('hashchange'));
+  }, true);
 })();
