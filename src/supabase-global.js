@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
 
-// Preserve the existing global contract while bundling Supabase locally with Vite.
-window.supabase = Object.freeze({ createClient });
+// Keep a mutable global contract for the legacy runtime bridge.
+// core-runtime.js wraps createClient to provide one shared client and route cancellation.
+window.supabase = { createClient };
