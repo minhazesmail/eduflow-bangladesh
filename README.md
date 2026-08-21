@@ -8,28 +8,26 @@ Bangladesh-first SaaS for coaching-center management using Vanilla HTML/CSS/JS, 
 index.html → landing site
 app.html
   ├─ config.js
-  ├─ Supabase JS client
-  ├─ dev-access.js
-  ├─ branch-context.js
-  ├─ runtime-stability.js
-  ├─ mock-data.js + mock-data-normalize.js
-  ├─ demo-mode.js
-  ├─ core-runtime.js        ← shared Supabase client + route cancellation
-  ├─ route-controller.js    ← aborts superseded route requests
-  ├─ pagination-controller.js ← server-side range pagination for core lists
-  ├─ offline-attendance.js  ← IndexedDB attendance queue + sync
-  ├─ auth-recovery.js       ← single password recovery implementation
-  ├─ app-core.js             ← primary application runtime
-  ├─ operations-ui.js        ← canonical operations runtime
-  ├─ payment-checkout.js     ← online payment action
+  ├─ src/supabase-global.js
+  ├─ src/security-sanitize.js
+  ├─ src/i18n.js
+  ├─ core-runtime.js       ← shared client + route cancellation + safe toast
+  ├─ route-controller.js
+  ├─ pagination-controller.js
+  ├─ offline-attendance.js
+  ├─ auth-recovery.js
+  ├─ app-core.js            ← primary application runtime
+  ├─ operations-ui.js       ← canonical operations runtime
+  ├─ payment-checkout.js
   ├─ growth-features.js
+  ├─ runtime-feature-fixes.js
   ├─ production-gaps-fix.js
-  └─ runtime-feature-fixes.js
+  └─ feature-specific UI modules
 
 guardian.html → guardian-scoped portal
 ```
 
-There is one active operations implementation and one active password-recovery implementation. Legacy `operations-ui-v2.js` and `password-recovery.js` are retired.
+The runtime is intentionally consolidating toward one owning module per concern. Removed compatibility/monkey-patch layers are not reintroduced as new `*-fix.js`, `*-bridge.js`, or global runtime shims unless they represent a genuinely separate service.
 
 ## Key reliability features
 
@@ -83,7 +81,7 @@ payment-ipn
 
 ## Vercel notification worker
 
-`/api/notification-worker.js` is a Vercel serverless endpoint that forwards to `process-notification-queue` using the Supabase service-role key. The worker itself is now protected by a separate `CRON_SECRET` and requires:
+`/api/notification-worker.js` is a Vercel serverless endpoint that forwards to `process-notification-queue` using the Supabase service-role key. The worker itself is protected by a separate `CRON_SECRET` and requires:
 
 ```http
 Authorization: Bearer <CRON_SECRET>
