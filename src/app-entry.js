@@ -7,7 +7,6 @@ import '../config.js';
 import './supabase-global.js';
 import './security-sanitize.js';
 import './i18n.js';
-import './site-language-v2.js';
 import '../dev-access.js';
 import '../branch-context.js';
 import '../runtime-stability.js';
@@ -33,15 +32,24 @@ import './attrition-ui.js';
 (function () {
   const i18n = window.EduFlowI18n;
   if (!i18n) return;
+
   const handler = () => {
     i18n.toggleLang();
-    i18n.applyStatic();
-    window.EduFlowSiteLanguageV2?.apply?.();
-    if (window.EduFlow?.navigateTo) window.EduFlow.navigateTo(location.hash.slice(1) || 'dashboard');
+    i18n.applyAll?.() || i18n.applyStatic();
+    if (window.EduFlow?.navigateTo) {
+      window.EduFlow.navigateTo(location.hash.slice(1) || 'dashboard');
+    }
   };
+
   const wire = () => {
     document.getElementById('lang-toggle')?.addEventListener('click', handler);
     document.getElementById('lang-toggle-top')?.addEventListener('click', handler);
+    i18n.applyAll?.() || i18n.applyStatic();
   };
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', wire); else wire();
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', wire);
+  } else {
+    wire();
+  }
 })();
