@@ -25,6 +25,7 @@ import '../production-gaps-fix.js';
 import '../runtime-feature-fixes.js';
 import './sms-actions.js';
 import './i18n-app-bridge.js';
+import './app-core-sms-patch.js';
 
 // Wire language toggle + initial static apply
 (function () {
@@ -35,7 +36,6 @@ import './i18n-app-bridge.js';
     const handler = () => {
       i18n.toggleLang();
       i18n.applyStatic();
-      // Re-render current page if app is mounted
       if (window.EduFlow?.navigateTo && location.hash) {
         const page = location.hash.slice(1) || 'dashboard';
         window.EduFlow.navigateTo(page);
