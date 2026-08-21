@@ -1,6 +1,6 @@
 # EduFlow Bangladesh
 
-Bangladesh-first SaaS for coaching-center management. The production app uses Vanilla HTML/CSS/JS, Supabase Auth/Postgres, Supabase Edge Functions, and Vercel.
+Bangladesh-first SaaS for coaching-center management using Vanilla HTML/CSS/JS, Supabase Auth/Postgres, Supabase Edge Functions, and Vercel.
 
 ## Runtime architecture
 
@@ -12,33 +12,39 @@ app.html
   ├─ dev-access.js
   ├─ branch-context.js
   ├─ runtime-stability.js
-  ├─ mock-data.js
-  ├─ mock-data-normalize.js
+  ├─ mock-data.js + mock-data-normalize.js
   ├─ demo-mode.js
-  ├─ core-runtime.js        ← one shared Supabase client
-  ├─ auth-recovery.js
+  ├─ core-runtime.js        ← shared Supabase client + route cancellation
+  ├─ route-controller.js    ← aborts superseded route requests
+  ├─ pagination-controller.js ← server-side range pagination for core lists
+  ├─ offline-attendance.js  ← IndexedDB attendance queue + sync
+  ├─ auth-recovery.js       ← single password recovery implementation
   ├─ app-core.js             ← primary application runtime
-  ├─ operations-ui-v2.js
+  ├─ operations-ui.js        ← canonical operations runtime
+  ├─ payment-checkout.js     ← online payment action
   ├─ growth-features.js
   ├─ production-gaps-fix.js
   └─ runtime-feature-fixes.js
 
-guardian.html → independent guardian portal client
+guardian.html → guardian-scoped portal
 ```
 
-There is one active dashboard runtime and one shared Supabase client per page. Compatibility/AI-removal shims are no longer part of the dashboard boot chain.
+There is one active operations implementation and one active password-recovery implementation. Legacy `operations-ui-v2.js` and `password-recovery.js` are retired.
 
-## Product features
+## Key reliability features
 
-Guardian portal, automated notifications, admissions CRM, multi-branch context, Attention Center, routine/conflict detection, expenses/profit, operational documents, notification history, and payment integration boundaries.
-
-EduFlow does not include an AI assistant or OpenAI integration.
+- One shared Supabase client per page.
+- Route changes cancel superseded Supabase requests through `AbortController`.
+- Core list pages use server-side `range()` pagination; payments/results/notices/team use feature-specific pagination.
+- Attendance supports IndexedDB offline writes and automatic retry/sync when connectivity returns.
+- Demo/dev modes remain read-only and never write real customer data.
+- AI/OpenAI has been removed from the application.
 
 ## Database migrations
 
-The canonical migration source is `supabase/migrations/`. Do not use a root `migration.sql` snapshot or the old root `migrations/` directory.
+The canonical migration source is `supabase/migrations/`. Do not recreate the old root SQL snapshot.
 
-Run the migrations in repository order, including:
+Important migrations include:
 
 1. `0001_base_schema.sql`
 2. `0002_stabilization.sql`
@@ -53,6 +59,8 @@ Run the migrations in repository order, including:
 11. `20260821145000_attention_metrics_rpc.sql`
 12. `20260821150000_remove_ai.sql`
 13. `20260821160000_branch_rls_hardening.sql`
+14. `20260821161000_guardian_rls_penetration_hardening.sql`
+15. `20260821161100_notice_status_compat.sql`
 
 ## Edge Functions
 
@@ -68,9 +76,9 @@ payment-gateway
 
 ### Browser
 
-Only the public Supabase URL and publishable key belong in browser configuration. Never expose the service-role key or payment/provider secrets in `config.js`.
+Only the public Supabase URL and publishable key belong in browser configuration.
 
-### invite-member / invite-guardian
+### Team / guardian invitations
 
 ```text
 SUPABASE_URL
@@ -78,7 +86,7 @@ SUPABASE_SERVICE_ROLE_KEY
 SITE_URL
 ```
 
-### SMS / WhatsApp
+### Notifications
 
 ```text
 SUPABASE_URL
@@ -89,49 +97,65 @@ TWILIO_SMS_FROM
 TWILIO_WHATSAPP_FROM
 ```
 
-Twilio credentials are read only by Edge Functions. Without them, notifications remain queued/skipped rather than being falsely marked as sent.
+### bKash
 
-### bKash / Nagad
+```text
+BKASH_BASE_URL
+BKASH_USERNAME
+BKASH_PASSWORD
+BKASH_APP_KEY
+BKASH_APP_SECRET
+```
 
-The application and `payment-gateway` Edge Function provide a secure server-side integration boundary. Live checkout/verification still requires the merchant credentials and exact provider API contract for the center's account; those secrets must remain server-side.
+Use the correct merchant/sandbox base URL for the account. Secrets stay in Supabase Edge Functions.
 
-## Branch context
+### Nagad
 
-The active branch is stored in `localStorage` as `eduflow.activeBranch`. `branch-context.js` applies the selected branch to branch-scoped Supabase reads/writes, and Postgres RLS now enforces branch visibility for teacher/staff while owners/admins can oversee the full organization.
+The adapter is contract-driven because merchant onboarding determines the exact endpoint/authentication/signing contract. Configure the exact endpoints and credentials supplied by the merchant account:
 
-Selecting **All branches** clears the branch filter.
+```text
+NAGAD_CREATE_URL
+NAGAD_VERIFY_URL
+NAGAD_API_VERSION
+NAGAD_CLIENT_TYPE
+NAGAD_API_KEY                 # if your contract uses bearer/API-key auth
+NAGAD_MERCHANT_ID
+NAGAD_MERCHANT_NUMBER
+```
 
-## Attention Center
+Do not place these values in browser `config.js`.
 
-Attendance is calculated from real `attendance` records through `get_attention_metrics()` over the last 90 days. Students with no attendance history are shown separately and are not falsely treated as low-attendance. There is only one active Attention Center implementation.
+## Guardian security
 
-## Documents
+Guardian access is restricted by `guardian_accounts` + `student_guardians` links. RLS prevents a guardian from reading unrelated students, attendance, payments, results, batches, exams, or organization notices outside their linked organization. A repeatable penetration harness is in `supabase/tests/guardian_rls_penetration.sql`; run it in a disposable Supabase branch with two guardian fixtures.
 
-Document actions produce type-specific output: report cards/marksheets use results, batch rosters use batch data, attendance reports use attendance records, fee statements use payment history, and salary statements use teacher compensation data.
+## Online payments
 
-## Guardian portal
+The Fees & Payments page exposes **Create online payment**. The browser calls the JWT-protected `payment-gateway` Edge Function, which talks to the provider server-side and never exposes merchant secrets.
 
-Open `/guardian.html`. Guardians are invited internally and receive guardian-scoped read access through `guardian_accounts` and `student_guardians`.
+The bKash adapter supports Tokenized Checkout create/execute/status. Nagad support uses configurable merchant-contract endpoints; live activation still requires the exact merchant API contract and credentials.
 
-## Demo mode
+## E2E tests
 
-Open `/app.html?demo=true`. Demo mode uses in-memory Bangladesh sample data, never reads/writes production Postgres, disables mutations, and shows persistent Demo Mode state.
+Playwright smoke tests live in `tests/e2e/site.spec.js` and run through `.github/workflows/e2e.yml`.
 
-## Development access
+```bash
+npm install
+npx playwright install --with-deps chromium
+npm run test:e2e
+```
 
-Open `/app.html?dev=true` for an explicit read-only sample workspace during development. It sets Demo Mode and never creates a real authenticated session. Do not use this mode for customer accounts.
+Set `BASE_URL` to run against another deployment.
 
-## Security model
+## Demo and development
 
-- RLS is enabled on application and growth tables.
-- Tenant isolation uses `private.user_org_id()`.
-- Branch isolation is enforced in Postgres for scoped resources.
-- Guardian access is scoped through guardian account links.
-- Security-definer functions use explicit search paths.
-- Service-role credentials and provider secrets exist only in server-side functions.
-- Dynamic UI output is escaped.
-- The browser is not a notification queue worker; queued notifications require server-side scheduling/dispatch.
+```text
+/app.html?demo=true
+/app.html?dev=true
+```
+
+Both modes use sample/read-only data and never create a real authenticated session.
 
 ## Deployment
 
-Vercel serves the frontend and serverless notification-worker endpoint. The project does not use a sub-daily Vercel Cron schedule because the current Hobby plan rejects that pattern. Use Supabase-native scheduling or an external scheduler to invoke the notification queue worker.
+Vercel serves the frontend and serverless API routes. The project does not use a sub-daily Vercel Cron schedule because the current Hobby plan rejects that pattern. Use Supabase-native scheduling or an external scheduler for notification queue processing.
