@@ -4,8 +4,6 @@ Bangladesh-first SaaS for coaching-center management. The production app uses Va
 
 ## Runtime architecture
 
-The active browser runtime is intentionally small and single-path:
-
 ```text
 index.html → landing site
 app.html
@@ -15,58 +13,37 @@ app.html
   ├─ mock-data-normalize.js
   ├─ demo-mode.js
   ├─ app-core.js
-  └─ operations-ui-v2.js
+  ├─ operations-ui-v2.js
+  └─ auth-recovery.js
 ```
 
-`app-core.js` is the main application runtime. The old `app.js`, `rbac.js`, `team.js`, `auth-ux.js`, `communication.js`, and `communication-access.js` implementations have been retired to avoid duplicate runtimes.
+`app-core.js` is the primary runtime. `operations-ui-v2.js` supplies the richer attendance/team/payment/result/notice workflows. `auth-recovery.js` adds the password reset flow to the active app. Retired legacy runtimes are not loaded by `app.html`.
 
 ## Fresh Supabase setup
 
-1. Create a Supabase project.
-2. Run `supabase/migrations/0001_base_schema.sql`.
-3. Run `migration.sql`.
-4. Run `supabase/migrations/0002_stabilization.sql`.
-5. Deploy the invite function:
+Run these in order:
 
-```bash
-supabase functions deploy invite-member
-```
+1. `supabase/migrations/0001_base_schema.sql`
+2. `migration.sql`
+3. `supabase/migrations/0002_stabilization.sql`
+4. `supabase/migrations/0003_functionality_hardening.sql`
+5. Deploy `supabase/functions/invite-member/index.ts`
+
+The numbered migrations are the canonical source for new deployments. `migration.sql` is retained as a compatibility hardening script for existing installations.
 
 ## Existing-project upgrade
 
-For an existing EduFlow database, run:
-
-```text
-migration.sql
-supabase/migrations/0002_stabilization.sql
-```
-
-`0002_stabilization.sql` is idempotent for the policies/indexes it manages.
+Run the same sequence, including the functionality hardening migration. The scripts are written to be idempotent for the policies, indexes, support tables and triggers they own.
 
 ## Environment variables
 
-### Vercel / browser configuration
+### Browser / Vercel
 
-The browser uses a Supabase project URL and publishable/anon key. These values are safe to expose to the browser when RLS is correctly configured.
+The browser only uses the Supabase project URL and publishable key from `config.js`. No service-role key is included in client code.
 
-Recommended deployment settings:
+### Supabase Edge Function
 
-```text
-SUPABASE_URL
-SUPABASE_ANON_KEY
-APP_ENV
-RATE_LIMIT_MAX
-RATE_LIMIT_WINDOW_MS
-MAX_STUDENTS_FREE
-MAX_STUDENTS_PRO
-MAX_STUDENTS_ENTERPRISE
-```
-
-The current static Vercel build resolves the public browser values through `config.js`.
-
-### Supabase Edge Function secrets
-
-For `invite-member`:
+`invite-member` expects:
 
 ```text
 SUPABASE_URL
@@ -76,67 +53,54 @@ SITE_URL
 
 Never expose `SUPABASE_SERVICE_ROLE_KEY` to the browser.
 
-## Demo mode
+## Authentication
 
-Open:
+The active app supports:
+
+- email/password sign-up
+- email/password sign-in
+- password recovery email
+- secure password reset from a Supabase recovery session
+- owner-only team invitations
+
+The password reset redirect is:
 
 ```text
-/app.html?demo=true
+https://<your-site>/app.html?mode=recovery
 ```
 
-Demo mode:
+Add that URL to Supabase Auth's allowed redirect URLs.
 
-- uses in-memory sample Bangladesh data
-- does not read or write production Postgres
-- disables mutations
-- shows a persistent Demo Mode state
-- provides an `Exit Demo` action
+## Demo mode
+
+Open `/app.html?demo=true`.
+
+Demo mode uses in-memory sample Bangladesh data, never reads or writes production Postgres, disables mutations, and shows a persistent Demo Mode banner with an Exit action.
 
 ## Invite flow
 
-The owner uses the Team page to call the JWT-protected `invite-member` Edge Function.
+The owner uses the Team page to call the JWT-protected `invite-member` Edge Function. The function validates the caller, verifies owner role, creates the invitation row, sends the Supabase Auth invite, passes the invitation ID in metadata and redirects the invitee back to `app.html`.
 
-The function:
-
-1. validates the caller JWT
-2. verifies the caller is the organization owner
-3. creates an `organization_invitations` row
-4. sends the Supabase Auth invitation email
-5. includes the invitation ID in user metadata
-6. marks the invitation as sent
-
-The database onboarding trigger consumes the invitation metadata and creates the invited profile with the assigned role.
+The function handles browser CORS preflight and returns JSON errors consistently.
 
 ## Security model
 
 - RLS is enabled on application tables.
 - Tenant isolation uses `private.user_org_id()`.
-- Role authorization is enforced in database policies.
-- The signed-in user has an explicit self-view policy on `profiles` so first login can load the profile.
+- Database write policies now match the UI role matrix: staff can record attendance/payments but cannot delete or edit payments; teachers can enter/edit results but cannot delete them.
+- The signed-in user has an explicit self-view policy on `profiles`.
+- Security-definer triggers have explicit search paths.
 - Service-role credentials exist only in Edge Functions.
 - Demo data never writes to Supabase.
 - Dynamic UI output is escaped before rendering.
 
 ## Operational features
 
-Current production runtime includes:
-
-- students and guardian records
-- batches
-- bulk/date-based attendance
-- fee/payment CRUD
-- exams and results CRUD
-- notices CRUD
-- owner team role management
-- owner team invitations
-- billing/usage display
-- audit-log display
-- offline status handling
-- read-only Try Demo sandbox
+Current production runtime includes students, guardian records, batches, bulk/date attendance, fee/payment CRUD, exams, results CRUD, notices CRUD, owner team role management, owner invitations, billing/usage display, audit-log display, offline status handling, demo mode, and password recovery.
 
 ## Deployment
 
-Vercel serves the static frontend. Supabase hosts Auth, Postgres, and Edge Functions.
+Vercel serves the static frontend. Supabase hosts Auth, Postgres and Edge Functions.
 
 For local static development:
 
@@ -144,14 +108,17 @@ For local static development:
 npx serve . --listen 3000
 ```
 
-## Production checklist
+## Production verification checklist
 
 Before launch, verify:
 
-- `0001_base_schema.sql` succeeds on a fresh database
-- `migration.sql` succeeds immediately after it
-- `0002_stabilization.sql` succeeds
-- owner/admin/teacher/staff RLS matrix is tested
-- invite function secrets are configured
-- Demo Mode never touches production data
+- fresh schema migrations complete without an `attendance.date` error
+- the owner can sign in and load `profiles` + `organizations`
+- staff cannot edit/delete payments
+- staff cannot delete attendance
+- teachers cannot delete results
+- owner role changes use the Team modal
+- invitation preflight and POST requests succeed
+- password recovery reaches `app.html?mode=recovery`
+- Demo Mode does not call production Postgres
 - Vercel production deployment is READY
