@@ -3,7 +3,7 @@ import { store } from './src/eduflow-store.js';
 
 const cfg = window.eduflowConfig || {};
 if (!cfg.supabaseUrl || !cfg.supabaseKey || !window.supabase?.createClient) {
-  store.actions.setState?.({ ui: { loading: false } }, 'runtime:missing-config');
+  store.actions.setLoading(false);
 } else {
   const nativeCreateClient = window.supabase.createClient.bind(window.supabase);
   let sharedClient = null;
@@ -26,7 +26,7 @@ if (!cfg.supabaseUrl || !cfg.supabaseKey || !window.supabase?.createClient) {
             }
             const signal = activeController?.signal;
             if (signal && typeof request.abortSignal === 'function') request = request.abortSignal(signal);
-            return request.then((result) => {
+            return request.then(result => {
               if (!result?.error && operation) store.actions.recordsChanged(table, operation, result?.data ?? null);
               return resolve(result);
             }, reject);
@@ -50,7 +50,6 @@ if (!cfg.supabaseUrl || !cfg.supabaseKey || !window.supabase?.createClient) {
       sharedClient.auth.onAuthStateChange((event, session) => {
         if (event === 'SIGNED_OUT') store.actions.setAuth(null, null);
         else if (session) store.actions.setAuth(session, store.getState().auth.profile);
-        store.on('auth:changed', () => {});
       });
     }
     return sharedClient;
