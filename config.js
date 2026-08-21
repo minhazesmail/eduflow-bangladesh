@@ -10,8 +10,6 @@
     supabaseKey: 'sb_publishable_LhIRXury0u3KuwbT7RApdQ_rsMFM-tm',
     appEnv: 'production',
     isDemo,
-    rateLimitMax: 100,
-    rateLimitWindow: 60000,
     limits: { free: 50, pro: 500, enterprise: 5000 }
   });
 })();
