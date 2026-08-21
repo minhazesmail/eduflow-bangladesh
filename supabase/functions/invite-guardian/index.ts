@@ -1,19 +1,24 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { enforceRateLimit } from '../_shared/rate-limit.ts';
 
-const headers = {'Access-Control-Allow-Origin':'*','Access-Control-Allow-Headers':'authorization, x-client-info, apikey, content-type','Access-Control-Allow-Methods':'POST, OPTIONS'};
-const json=(body:unknown,status=200)=>new Response(JSON.stringify(body),{status,headers:{...headers,'Content-Type':'application/json'}});
+const headers={'Access-Control-Allow-Origin':'*','Access-Control-Allow-Headers':'authorization, x-client-info, apikey, content-type','Access-Control-Allow-Methods':'POST, OPTIONS'};
+const json=(body:unknown,status=200,extra:HeadersInit={})=>new Response(JSON.stringify(body),{status,headers:{...headers,...extra,'Content-Type':'application/json'}});
 Deno.serve(async req=>{
-  if(req.method==='OPTIONS') return new Response('ok',{headers});
-  if(req.method!=='POST') return json({error:'Method not allowed'},405);
-  const auth=req.headers.get('Authorization'); if(!auth?.startsWith('Bearer ')) return json({error:'Missing authorization token'},401);
+  if(req.method==='OPTIONS')return new Response('ok',{headers});
+  if(req.method!=='POST')return json({error:'Method not allowed'},405);
+  const auth=req.headers.get('Authorization'); if(!auth?.startsWith('Bearer '))return json({error:'Missing authorization token'},401);
   const url=Deno.env.get('SUPABASE_URL'), key=Deno.env.get('SUPABASE_SERVICE_ROLE_KEY'), site=Deno.env.get('SITE_URL')||'https://eduflow-bangladesh.vercel.app';
   if(!url||!key)return json({error:'Server configuration is incomplete'},500);
   const admin=createClient(url,key,{auth:{autoRefreshToken:false,persistSession:false}});
   const {data:userData,error:userError}=await admin.auth.getUser(auth.slice(7));
   if(userError||!userData.user)return json({error:'Invalid session'},401);
+
+  const rateLimited=await enforceRateLimit(req,admin,userData.user.id,{scope:'invite-guardian',ipLimit:30,userLimit:15,windowSeconds:60});
+  if(rateLimited)return rateLimited;
+
   const {data:actor}=await admin.from('profiles').select('id,organization_id,role').eq('id',userData.user.id).single();
   if(!actor||!['owner','admin','staff'].includes(actor.role))return json({error:'You do not have permission to invite guardians'},403);
-  let body: any; try{body=await req.json();}catch{return json({error:'Invalid JSON body'},400)}
+  let body:any; try{body=await req.json();}catch{return json({error:'Invalid JSON body'},400)}
   const guardianId=String(body.guardian_id||''); if(!guardianId)return json({error:'guardian_id is required'},400);
   const {data:g,error:ge}=await admin.from('guardians').select('id,organization_id,email,full_name').eq('id',guardianId).eq('organization_id',actor.organization_id).single();
   if(ge||!g?.email)return json({error:'Guardian email is required before sending a portal invite'},400);
