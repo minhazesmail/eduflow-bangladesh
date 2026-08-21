@@ -27,13 +27,14 @@ Run these in order:
 2. `migration.sql`
 3. `supabase/migrations/0002_stabilization.sql`
 4. `supabase/migrations/0003_functionality_hardening.sql`
-5. Deploy `supabase/functions/invite-member/index.ts`
+5. `supabase/migrations/0004_onboarding_trigger.sql`
+6. Deploy `supabase/functions/invite-member/index.ts`
 
 The numbered migrations are the canonical source for new deployments. `migration.sql` is retained as a compatibility hardening script for existing installations.
 
 ## Existing-project upgrade
 
-Run the same sequence, including the functionality hardening migration. The scripts are written to be idempotent for the policies, indexes, support tables and triggers they own.
+Run the same sequence, including the functionality hardening and onboarding migrations. The scripts are written to be idempotent for the policies, indexes, support tables and triggers they own.
 
 ## Environment variables
 
@@ -113,6 +114,7 @@ npx serve . --listen 3000
 Before launch, verify:
 
 - fresh schema migrations complete without an `attendance.date` error
+- the onboarding trigger creates an owner profile on sign-up
 - the owner can sign in and load `profiles` + `organizations`
 - staff cannot edit/delete payments
 - staff cannot delete attendance
