@@ -1,4 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { enforceRateLimit } from '../_shared/rate-limit.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -6,7 +7,7 @@ const corsHeaders = {
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 
-const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+const json = (body: unknown, status = 200, extra: HeadersInit = {}) => new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, ...extra, 'Content-Type': 'application/json' } });
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
@@ -24,6 +25,14 @@ Deno.serve(async (req) => {
   const token = authHeader.slice('Bearer '.length);
   const { data: userData, error: userError } = await admin.auth.getUser(token);
   if (userError || !userData.user) return json({ error: 'Invalid session' }, 401);
+
+  const rateLimited = await enforceRateLimit(req, admin, userData.user.id, {
+    scope: 'invite-member',
+    ipLimit: 20,
+    userLimit: 10,
+    windowSeconds: 60,
+  });
+  if (rateLimited) return rateLimited;
 
   const { data: actor, error: actorError } = await admin
     .from('profiles')
