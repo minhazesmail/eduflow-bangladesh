@@ -7,12 +7,28 @@
     window.MutationObserver = class EduFlowMutationObserver extends NativeMutationObserver {
       constructor(callback) {
         let observesBody = false;
+        const source = (() => { try { return Function.prototype.toString.call(callback); } catch (_) { return ''; } })();
+        const growthRouterObserver = source.includes('injectNav') && source.includes('route()');
         super((mutations, observer) => {
+          if (growthRouterObserver) {
+            const nav = document.querySelector('.nav');
+            if (!nav) return;
+            if (nav.dataset.growthInjected === '1') {
+              try { observer.disconnect(); } catch (_) {}
+              return;
+            }
+          }
           const pageContentOnly = observesBody && mutations.length > 0 && mutations.every((mutation) => {
             const target = mutation.target;
             return target && typeof target.closest === 'function' && target.closest('#page-content');
           });
           if (!pageContentOnly) callback(mutations, observer);
+          if (growthRouterObserver) {
+            const nav = document.querySelector('.nav');
+            if (nav?.dataset.growthInjected === '1') {
+              try { observer.disconnect(); } catch (_) {}
+            }
+          }
         });
         this.__eduflowMarkBody = () => { observesBody = true; };
       }
@@ -38,7 +54,7 @@
   };
   function wirePageResilience() {
     const page=document.getElementById('page-content'); if(!page||page.__eduflowResilience)return; page.__eduflowResilience=true;
-    const observer=new NativeMutationObserver(()=>{page.querySelectorAll('table').forEach(table=>{if(table.parentElement?.classList.contains('table-wrapper'))return;const wrapper=document.createElement('div');wrapper.className='table-wrapper';table.parentNode.insertBefore(wrapper,table);wrapper.appendChild(table);});});
+    const observer=new NativeMutationObserver(()=>{page.querySelectorAll('table').forEach(table=>{if(table.parentElement?.classList.contains('table-wrapper'))return;const wrapper=document.createElement('div');wrapper.className='table-wrapper';wrapper.style.overflowX='auto';wrapper.style.width='100%';table.parentNode.insertBefore(wrapper,table);wrapper.appendChild(table);});});
     observer.observe(page,{childList:true,subtree:true});
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>setTimeout(wirePageResilience,0),{once:true});else setTimeout(wirePageResilience,0);
