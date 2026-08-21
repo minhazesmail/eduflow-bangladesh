@@ -1,7 +1,8 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { enforceRateLimit } from '../_shared/rate-limit.ts';
 
-const H = {'Access-Control-Allow-Origin':'*','Access-Control-Allow-Headers':'authorization, x-client-info, apikey, content-type','Access-Control-Allow-Methods':'POST, OPTIONS'};
-const json=(b:unknown,s=200)=>new Response(JSON.stringify(b),{status:s,headers:{...H,'Content-Type':'application/json'}});
+const H={'Access-Control-Allow-Origin':'*','Access-Control-Allow-Headers':'authorization, x-client-info, apikey, content-type','Access-Control-Allow-Methods':'POST, OPTIONS'};
+const json=(b:unknown,s=200,extra:HeadersInit={})=>new Response(JSON.stringify(b),{status:s,headers:{...H,...extra,'Content-Type':'application/json'}});
 const env=(k:string)=>{const v=Deno.env.get(k);if(!v)throw new Error(`Missing ${k}`);return v;};
 let tokenCache:{token:string,expires:number}|null=null;
 
@@ -31,8 +32,14 @@ Deno.serve(async req=>{
   if(req.method!=='POST')return json({error:'Method not allowed'},405);
   const auth=req.headers.get('Authorization');if(!auth?.startsWith('Bearer '))return json({error:'Missing authorization token'},401);
   try{
+    const serviceKey=env('SUPABASE_SERVICE_ROLE_KEY');
+    const admin=createClient(env('SUPABASE_URL'),serviceKey,{auth:{autoRefreshToken:false,persistSession:false}});
     const db=createClient(env('SUPABASE_URL'),env('SUPABASE_ANON_KEY'),{global:{headers:{Authorization:auth}}});
     const {data:{user}}=await db.auth.getUser(auth.slice(7));if(!user)return json({error:'Invalid session'},401);
+
+    const rateLimited=await enforceRateLimit(req,admin,user.id,{scope:'payment-gateway',ipLimit:60,userLimit:20,windowSeconds:60});
+    if(rateLimited)return rateLimited;
+
     const {data:p,error:pe}=await db.from('profiles').select('organization_id,role').eq('id',user.id).single();if(pe||!p)return json({error:'Workspace unavailable'},403);
     if(!['owner','admin','staff'].includes(p.role))return json({error:'Forbidden'},403);
     let body:any;try{body=await req.json();}catch{return json({error:'Invalid JSON'},400);}
