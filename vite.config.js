@@ -11,11 +11,6 @@ export default defineConfig({
         landing: 'index.html',
         app: 'app.html',
         guardian: 'guardian.html'
-      },
-      output: {
-        manualChunks: {
-          supabase: ['@supabase/supabase-js']
-        }
       }
     }
   }
