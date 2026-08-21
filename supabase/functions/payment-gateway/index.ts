@@ -1,0 +1,12 @@
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+const H={'Access-Control-Allow-Origin':'*','Access-Control-Allow-Headers':'authorization, x-client-info, apikey, content-type','Access-Control-Allow-Methods':'POST, OPTIONS'};
+const json=(b:unknown,s=200)=>new Response(JSON.stringify(b),{status:s,headers:{...H,'Content-Type':'application/json'}});
+Deno.serve(async req=>{if(req.method==='OPTIONS')return new Response('ok',{headers:H});if(req.method!=='POST')return json({error:'Method not allowed'},405);const auth=req.headers.get('Authorization');if(!auth?.startsWith('Bearer '))return json({error:'Missing authorization token'},401);const url=Deno.env.get('SUPABASE_URL'),key=Deno.env.get('SUPABASE_ANON_KEY');if(!url||!key)return json({error:'Server configuration is incomplete'},500);const db=createClient(url,key,{global:{headers:{Authorization:auth}}});const {data:{user}}=await db.auth.getUser(auth.slice(7));if(!user)return json({error:'Invalid session'},401);const {data:p}=await db.from('profiles').select('organization_id,role').eq('id',user.id).single();if(!p||!['owner','admin','staff'].includes(p.role))return json({error:'Forbidden'},403);let body:any;try{body=await req.json()}catch{return json({error:'Invalid JSON'},400)}const action=String(body.action||'create');const provider=String(body.provider||'').toLowerCase();if(!['bkash','nagad'].includes(provider))return json({error:'provider must be bkash or nagad'},400);const {data:cfg}=await db.from('payment_integrations').select('*').eq('organization_id',p.organization_id).eq('provider',provider).maybeSingle();if(!cfg?.is_enabled)return json({error:`${provider} integration is not enabled`},409);
+// Provider contracts differ by merchant account and onboarding. Keep secrets/config server-side.
+if(action==='create'){
+ const amount=Number(body.amount||0);if(!(amount>0))return json({error:'amount must be greater than 0'},400);
+ const externalRef=`EF-${Date.now()}-${crypto.randomUUID().slice(0,8)}`;
+ return json({ok:true,provider,reference:externalRef,status:'created',message:'Provider checkout creation is enabled at the backend boundary. Configure provider-specific credentials/API contract before live checkout.'});
+}
+if(action==='verify')return json({ok:true,provider,status:'verification_endpoint_ready',message:'Provider verification is exposed server-side; connect the merchant webhook/credential contract to enable live verification.'});
+return json({error:'Unsupported action'},400);});

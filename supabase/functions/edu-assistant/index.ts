@@ -6,7 +6,7 @@ Deno.serve(async req=>{
   if(req.method==='OPTIONS')return new Response('ok',{headers});
   if(req.method!=='POST')return json({error:'Method not allowed'},405);
   const auth=req.headers.get('Authorization');if(!auth?.startsWith('Bearer '))return json({error:'Missing authorization token'},401);
-  const supabaseUrl=Deno.env.get('SUPABASE_URL'),anonKey=Deno.env.get('SUPABASE_ANON_KEY'),openaiKey=Deno.env.get('OPENAI_API_KEY'),model=Deno.env.get('OPENAI_MODEL')||'gpt-5.6-luna';
+  const supabaseUrl=Deno.env.get('SUPABASE_URL'),anonKey=Deno.env.get('SUPABASE_ANON_KEY'),openaiKey=Deno.env.get('OPENAI_API_KEY'),model=Deno.env.get('OPENAI_MODEL')||'gpt-5.6';
   if(!supabaseUrl||!anonKey||!openaiKey)return json({error:'AI server configuration is incomplete'},500);
   const userClient=createClient(supabaseUrl,anonKey,{global:{headers:{Authorization:auth}}});
   const {data:{user},error:ue}=await userClient.auth.getUser(auth.slice(7));if(ue||!user)return json({error:'Invalid session'},401);
@@ -27,7 +27,7 @@ Deno.serve(async req=>{
   const context=JSON.stringify({organization_id:org,student_count:students.data?.length||0,batches:batches.data||[],teachers:teachers.data||[],recent_payments:payments.data||[],attendance:attendance.data||[],admission_leads:leads.data||[],expenses:expenses.data||[]});
   const prompt=`You are EduFlow AI, an operations assistant for a Bangladesh coaching center. Answer only from the supplied workspace data. Be concise, practical, and transparent when the data is insufficient. Use BDT amounts and Bangladesh date conventions. Never invent a student, payment, result, or financial figure.\n\nWorkspace data:\n${context}\n\nOwner question:\n${question}`;
   const r=await fetch('https://api.openai.com/v1/responses',{method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${openaiKey}`},body:JSON.stringify({model,input:prompt})});
-  if(!r.ok){const detail=await r.text();return json({error:'AI provider request failed',detail:detail.slice(0,500)},502)}
+  if(!r.ok){const detail=await r.text();return json({error:'AI provider request failed',detail:detail.slice(0,500),model},502)}
   const data=await r.json();const answer=data.output_text||data.output?.flatMap((x:any)=>x.content||[]).map((x:any)=>x.text||'').join('')||'No answer was returned.';
   await userClient.from('ai_usage').insert({organization_id:org,user_id:user.id,model,input_tokens:data.usage?.input_tokens||0,output_tokens:data.usage?.output_tokens||0});
   return json({answer,model});
