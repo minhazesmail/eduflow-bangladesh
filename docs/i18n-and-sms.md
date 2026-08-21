@@ -2,16 +2,23 @@
 
 ## i18n
 
-Lightweight zero-dependency module: `src/i18n.js`.
+**Single module:** `src/i18n.js` → `window.EduFlowI18n`
 
 - Languages: `bn` (default) and `en`
 - Persist: `localStorage.eduflow_lang`
-- API: `window.EduFlowI18n.t(key)`, `.setLang('bn'|'en')`, `.toggleLang()`, `.applyStatic()`
-- Toggle buttons: sidebar + topbar (`#lang-toggle`, `#lang-toggle-top`)
-- Static strings: `data-i18n` attributes in `app.html`
-- Dynamic lists: `t()` inside `app-core.js` for Students / Results and shared labels
+- API:
+  - `t(key)`, `setLang('bn'|'en')`, `toggleLang()`
+  - `applyStatic()` — `[data-i18n]` nodes
+  - `applyLanding()` / `applyAuth()` — marketing site + auth form
+  - `applyAll()` — static + landing + auth
+  - `smsBody(template, params)` — Bangla SMS templates
+- Entry points import **only** `./i18n.js` (no `site-language*` modules)
+- Toggle: `#lang-toggle`, `#lang-toggle-top` (app); landing header button injected by `applyLanding`
+- Static strings: `data-i18n` in `app.html`; dynamic lists use `t()` / bridges
 
-Guardian portal already stores `preferred_language` on guardians; UI chrome uses the same dictionary when wired.
+`src/i18n-app-bridge.js` only patches app navigation titles and SMS button handlers — it does not own a second dictionary.
+
+Guardian portal uses the same `EduFlowI18n` keys (`guardian.*`) and `preferred_language` on guardian records.
 
 ### Adding a string
 
