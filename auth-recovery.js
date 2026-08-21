@@ -1,14 +1,35 @@
-/* EduFlow password recovery: works with the active app.html runtime and Supabase Auth. */
+/* EduFlow password recovery: runs before app-core so recovery sessions are not consumed as normal logins. */
 (function () {
   'use strict';
+
+  const params = new URLSearchParams(window.location.search);
+  const isRecoveryRoute = params.get('mode') === 'recovery';
+  if (isRecoveryRoute) window.__eduflowRecoveryMode = true;
 
   const config = window.eduflowConfig;
   if (!config?.supabaseUrl || !config?.supabaseKey || config.isDemo) return;
 
-  const supabaseClient = window.supabase?.createClient?.(config.supabaseUrl, config.supabaseKey, {
+  const nativeCreateClient = window.supabase?.createClient;
+  if (!nativeCreateClient) return;
+
+  const supabaseClient = nativeCreateClient(config.supabaseUrl, config.supabaseKey, {
     auth: { autoRefreshToken: true, persistSession: true, detectSessionInUrl: true }
   });
-  if (!supabaseClient) return;
+
+  if (isRecoveryRoute && !window.__eduflowRecoveryClientPatched) {
+    window.__eduflowRecoveryClientPatched = true;
+    const originalCreateClient = window.supabase.createClient.bind(window.supabase);
+    window.supabase.createClient = (...args) => {
+      const client = originalCreateClient(...args);
+      if (!client?.auth) return client;
+      const originalGetSession = client.auth.getSession.bind(client.auth);
+      client.auth.getSession = async (...sessionArgs) => {
+        const result = await originalGetSession(...sessionArgs);
+        return { ...result, data: { ...(result.data || {}), session: null } };
+      };
+      return client;
+    };
+  }
 
   const $ = (id) => document.getElementById(id);
   const esc = (value) => {
@@ -18,7 +39,7 @@
   };
 
   function showMessage(text, type = 'error') {
-    const node = $('auth-recovery-message');
+    const node = $('auth-recovery-message') || $('forgot-message');
     if (!node) return;
     node.textContent = text;
     node.className = type === 'success' ? 'auth-success' : 'auth-error';
@@ -54,10 +75,10 @@
       try {
         const { error } = await supabaseClient.auth.updateUser({ password });
         if (error) throw error;
-        showMessage('Password updated. Please sign in with your new password.', 'success');
+        showMessage('Password updated successfully. You can now sign in with your new password.', 'success');
         await supabaseClient.auth.signOut();
         history.replaceState(null, '', `${location.pathname}`);
-        setTimeout(() => location.reload(), 700);
+        setTimeout(() => location.reload(), 900);
       } catch (error) {
         showMessage(error?.message || 'Could not update your password.');
       } finally {
@@ -65,25 +86,6 @@
         button.textContent = 'Update password';
       }
     };
-  }
-
-  function renderForgotPasswordLink() {
-    const form = $('auth-form-el');
-    if (!form || $('forgot-password-link')) return;
-    const actions = form.querySelector('.actions');
-    if (!actions) return;
-    const link = document.createElement('button');
-    link.type = 'button';
-    link.id = 'forgot-password-link';
-    link.className = 'btn btn-secondary';
-    link.textContent = 'Forgot password?';
-    link.style.marginTop = '8px';
-    link.onclick = async () => {
-      const email = $('auth-email')?.value.trim().toLowerCase();
-      if (!email) return showForgotForm('Enter your account email first.');
-      await sendReset(email);
-    };
-    actions.parentElement?.appendChild(link);
   }
 
   function showForgotForm(message = '') {
@@ -101,7 +103,7 @@
         <div class="actions" style="margin-top:18px"><button class="btn btn-primary" type="submit" id="forgot-submit">Send reset link</button><button class="btn btn-secondary" type="button" id="forgot-back">Back to sign in</button></div>
       </form>
     </div></div>`;
-    $('forgot-back').onclick = () => location.reload();
+    $('forgot-back').onclick = () => location.replace(`${location.pathname}`);
     $('forgot-form').onsubmit = async (event) => {
       event.preventDefault();
       await sendReset($('forgot-email').value.trim().toLowerCase());
@@ -109,17 +111,17 @@
   }
 
   async function sendReset(email) {
+    if (!email) return showForgotForm('Enter your account email first.');
     const button = $('forgot-submit');
     if (button) { button.disabled = true; button.textContent = 'Sending…'; }
     try {
-      const { error } = await supabaseClient.auth.resetPasswordForEmail(email, {
-        redirectTo: `${location.origin}/app.html?mode=recovery`
-      });
+      const redirectTo = `${location.origin}${location.pathname}?mode=recovery`;
+      const { error } = await supabaseClient.auth.resetPasswordForEmail(email, { redirectTo });
       if (error) throw error;
       const message = $('forgot-message');
       if (message) {
         message.className = 'auth-success';
-        message.textContent = 'If an account exists for that email, a reset link has been sent.';
+        message.textContent = 'If an account exists for that email, a password reset link has been sent. Check your inbox and spam folder.';
         message.hidden = false;
       }
     } catch (error) {
@@ -134,23 +136,46 @@
     }
   }
 
-  function watchAuth() {
-    supabaseClient.auth.onAuthStateChange((event) => {
-      if (event === 'PASSWORD_RECOVERY') renderRecovery();
-    });
+  async function maybeRenderRecovery() {
+    if (!isRecoveryRoute) return false;
+    const { data } = await supabaseClient.auth.getSession();
+    if (data?.session) {
+      renderRecovery();
+      return true;
+    }
+    return false;
   }
 
-  const observer = new MutationObserver(renderForgotPasswordLink);
+  function addForgotLink() {
+    if (isRecoveryRoute) return false;
+    const form = $('auth-form-el');
+    if (!form || $('forgot-password-link')) return false;
+    const actions = form.querySelector('.actions');
+    if (!actions) return false;
+    const link = document.createElement('button');
+    link.type = 'button';
+    link.id = 'forgot-password-link';
+    link.className = 'btn btn-secondary';
+    link.textContent = 'Forgot password?';
+    link.style.marginTop = '8px';
+    link.onclick = () => showForgotForm();
+    actions.parentElement?.appendChild(link);
+    return true;
+  }
+
   function start() {
-    if (new URLSearchParams(location.search).get('mode') === 'recovery') {
-      setTimeout(async () => {
-        const { data } = await supabaseClient.auth.getSession();
-        if (data?.session) renderRecovery();
-      }, 0);
+    if (isRecoveryRoute) {
+      maybeRenderRecovery();
+      supabaseClient.auth.onAuthStateChange((event) => {
+        if (event === 'PASSWORD_RECOVERY' || event === 'SIGNED_IN') renderRecovery();
+      });
+      return;
     }
-    renderForgotPasswordLink();
-    observer.observe(document.body, { childList: true, subtree: true });
-    watchAuth();
+    addForgotLink();
+    const timer = window.setInterval(() => {
+      if (addForgotLink()) window.clearInterval(timer);
+    }, 100);
+    window.setTimeout(() => window.clearInterval(timer), 10000);
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start, { once: true });
