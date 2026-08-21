@@ -1,6 +1,6 @@
 import '../styles.css';
 import '../brand-refresh.css';
-import '../guardian.css';
+import './guardian.css';
 import '../config.js';
 import './supabase-global.js';
 
