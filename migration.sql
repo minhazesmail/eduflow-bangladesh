@@ -4,7 +4,6 @@
 --   2. migration.sql
 --   3. supabase/migrations/0002_stabilization.sql
 --   4. supabase/migrations/0003_functionality_hardening.sql
---
 -- Existing installations can run this idempotently before the numbered migrations.
 
 create schema if not exists private;
@@ -33,139 +32,64 @@ alter table public.teachers enable row level security;
 alter table public.notices enable row level security;
 
 drop policy if exists "users view own profile" on public.profiles;
-create policy "users view own profile" on public.profiles
-  for select to authenticated using (id = auth.uid());
+create policy "users view own profile" on public.profiles for select to authenticated using (id = auth.uid());
 
 drop policy if exists "authenticated users view own organization" on public.organizations;
-create policy "authenticated users view own organization" on public.organizations
-  for select to authenticated using (id = private.user_org_id());
-
+create policy "authenticated users view own organization" on public.organizations for select to authenticated using (id = private.user_org_id());
 drop policy if exists "owner admin update own organization" on public.organizations;
-create policy "owner admin update own organization" on public.organizations
-  for update to authenticated
-  using (id = private.user_org_id() and private.user_role() in ('owner','admin'))
-  with check (id = private.user_org_id());
+create policy "owner admin update own organization" on public.organizations for update to authenticated using (id = private.user_org_id() and private.user_role() in ('owner','admin')) with check (id = private.user_org_id());
 
--- Students
- drop policy if exists "owner admin manage students" on public.students;
- drop policy if exists "teacher staff read students" on public.students;
- create policy "owner admin manage students" on public.students
-   for all to authenticated
-   using (organization_id = private.user_org_id() and private.user_role() in ('owner','admin'))
-   with check (organization_id = private.user_org_id() and private.user_role() in ('owner','admin'));
- create policy "teacher staff read students" on public.students
-   for select to authenticated
-   using (organization_id = private.user_org_id() and private.user_role() in ('teacher','staff'));
+drop policy if exists "owner admin manage students" on public.students;
+drop policy if exists "teacher staff read students" on public.students;
+create policy "owner admin manage students" on public.students for all to authenticated using (organization_id = private.user_org_id() and private.user_role() in ('owner','admin')) with check (organization_id = private.user_org_id() and private.user_role() in ('owner','admin'));
+create policy "teacher staff read students" on public.students for select to authenticated using (organization_id = private.user_org_id() and private.user_role() in ('teacher','staff'));
 
--- Batches
- drop policy if exists "owner admin manage batches" on public.batches;
- drop policy if exists "teacher staff read batches" on public.batches;
- create policy "owner admin manage batches" on public.batches
-   for all to authenticated
-   using (organization_id = private.user_org_id() and private.user_role() in ('owner','admin'))
-   with check (organization_id = private.user_org_id() and private.user_role() in ('owner','admin'));
- create policy "teacher staff read batches" on public.batches
-   for select to authenticated
-   using (organization_id = private.user_org_id() and private.user_role() in ('teacher','staff'));
+drop policy if exists "owner admin manage batches" on public.batches;
+drop policy if exists "teacher staff read batches" on public.batches;
+create policy "owner admin manage batches" on public.batches for all to authenticated using (organization_id = private.user_org_id() and private.user_role() in ('owner','admin')) with check (organization_id = private.user_org_id() and private.user_role() in ('owner','admin'));
+create policy "teacher staff read batches" on public.batches for select to authenticated using (organization_id = private.user_org_id() and private.user_role() in ('teacher','staff'));
 
--- Attendance
- drop policy if exists "owner admin staff manage attendance" on public.attendance;
- drop policy if exists "teacher read attendance" on public.attendance;
- create policy "attendance members read" on public.attendance
-   for select to authenticated
-   using (organization_id = private.user_org_id() and private.user_role() in ('owner','admin','teacher','staff'));
- create policy "owner admin staff insert attendance" on public.attendance
-   for insert to authenticated
-   with check (organization_id = private.user_org_id() and private.user_role() in ('owner','admin','staff'));
- create policy "owner admin staff update attendance" on public.attendance
-   for update to authenticated
-   using (organization_id = private.user_org_id() and private.user_role() in ('owner','admin','staff'))
-   with check (organization_id = private.user_org_id() and private.user_role() in ('owner','admin','staff'));
- create policy "owner admin delete attendance" on public.attendance
-   for delete to authenticated
-   using (organization_id = private.user_org_id() and private.user_role() in ('owner','admin'));
+drop policy if exists "owner admin staff manage attendance" on public.attendance;
+drop policy if exists "teacher read attendance" on public.attendance;
+create policy "attendance members read" on public.attendance for select to authenticated using (organization_id = private.user_org_id() and private.user_role() in ('owner','admin','teacher','staff'));
+create policy "owner admin staff insert attendance" on public.attendance for insert to authenticated with check (organization_id = private.user_org_id() and private.user_role() in ('owner','admin','staff'));
+create policy "owner admin staff update attendance" on public.attendance for update to authenticated using (organization_id = private.user_org_id() and private.user_role() in ('owner','admin','staff')) with check (organization_id = private.user_org_id() and private.user_role() in ('owner','admin','staff'));
+create policy "owner admin delete attendance" on public.attendance for delete to authenticated using (organization_id = private.user_org_id() and private.user_role() in ('owner','admin'));
 
--- Payments
- drop policy if exists "owner admin staff manage payments" on public.payments;
- create policy "payment members read" on public.payments
-   for select to authenticated
-   using (organization_id = private.user_org_id() and private.user_role() in ('owner','admin','staff'));
- create policy "owner admin staff insert payments" on public.payments
-   for insert to authenticated
-   with check (organization_id = private.user_org_id() and private.user_role() in ('owner','admin','staff'));
- create policy "owner admin update payments" on public.payments
-   for update to authenticated
-   using (organization_id = private.user_org_id() and private.user_role() in ('owner','admin'))
-   with check (organization_id = private.user_org_id() and private.user_role() in ('owner','admin'));
- create policy "owner admin delete payments" on public.payments
-   for delete to authenticated
-   using (organization_id = private.user_org_id() and private.user_role() in ('owner','admin'));
+drop policy if exists "owner admin staff manage payments" on public.payments;
+create policy "payment members read" on public.payments for select to authenticated using (organization_id = private.user_org_id() and private.user_role() in ('owner','admin','staff'));
+create policy "owner admin staff insert payments" on public.payments for insert to authenticated with check (organization_id = private.user_org_id() and private.user_role() in ('owner','admin','staff'));
+create policy "owner admin update payments" on public.payments for update to authenticated using (organization_id = private.user_org_id() and private.user_role() in ('owner','admin')) with check (organization_id = private.user_org_id() and private.user_role() in ('owner','admin'));
+create policy "owner admin delete payments" on public.payments for delete to authenticated using (organization_id = private.user_org_id() and private.user_role() in ('owner','admin'));
 
--- Exams
- drop policy if exists "owner admin manage exams" on public.exams;
- drop policy if exists "teacher read exams" on public.exams;
- create policy "owner admin manage exams" on public.exams
-   for all to authenticated
-   using (organization_id = private.user_org_id() and private.user_role() in ('owner','admin'))
-   with check (organization_id = private.user_org_id() and private.user_role() in ('owner','admin'));
- create policy "teacher read exams" on public.exams
-   for select to authenticated
-   using (organization_id = private.user_org_id() and private.user_role() = 'teacher');
+drop policy if exists "owner admin manage exams" on public.exams;
+drop policy if exists "teacher read exams" on public.exams;
+create policy "owner admin manage exams" on public.exams for all to authenticated using (organization_id = private.user_org_id() and private.user_role() in ('owner','admin')) with check (organization_id = private.user_org_id() and private.user_role() in ('owner','admin'));
+create policy "teacher read exams" on public.exams for select to authenticated using (organization_id = private.user_org_id() and private.user_role() = 'teacher');
 
--- Results
- drop policy if exists "owner admin teacher manage results" on public.results;
- drop policy if exists "staff read results" on public.results;
- create policy "result members read" on public.results
-   for select to authenticated
-   using (organization_id = private.user_org_id() and private.user_role() in ('owner','admin','teacher','staff'));
- create policy "owner admin teacher insert results" on public.results
-   for insert to authenticated
-   with check (organization_id = private.user_org_id() and private.user_role() in ('owner','admin','teacher'));
- create policy "owner admin teacher update results" on public.results
-   for update to authenticated
-   using (organization_id = private.user_org_id() and private.user_role() in ('owner','admin','teacher'))
-   with check (organization_id = private.user_org_id() and private.user_role() in ('owner','admin','teacher'));
- create policy "owner admin delete results" on public.results
-   for delete to authenticated
-   using (organization_id = private.user_org_id() and private.user_role() in ('owner','admin'));
+drop policy if exists "owner admin teacher manage results" on public.results;
+drop policy if exists "staff read results" on public.results;
+create policy "result members read" on public.results for select to authenticated using (organization_id = private.user_org_id() and private.user_role() in ('owner','admin','teacher','staff'));
+create policy "owner admin teacher insert results" on public.results for insert to authenticated with check (organization_id = private.user_org_id() and private.user_role() in ('owner','admin','teacher'));
+create policy "owner admin teacher update results" on public.results for update to authenticated using (organization_id = private.user_org_id() and private.user_role() in ('owner','admin','teacher')) with check (organization_id = private.user_org_id() and private.user_role() in ('owner','admin','teacher'));
+create policy "owner admin delete results" on public.results for delete to authenticated using (organization_id = private.user_org_id() and private.user_role() in ('owner','admin'));
 
--- Teachers
- drop policy if exists "owner admin manage teachers" on public.teachers;
- drop policy if exists "teacher staff read teachers" on public.teachers;
- create policy "owner admin manage teachers" on public.teachers
-   for all to authenticated
-   using (organization_id = private.user_org_id() and private.user_role() in ('owner','admin'))
-   with check (organization_id = private.user_org_id() and private.user_role() in ('owner','admin'));
- create policy "teacher staff read teachers" on public.teachers
-   for select to authenticated
-   using (organization_id = private.user_org_id() and private.user_role() in ('teacher','staff'));
+drop policy if exists "owner admin manage teachers" on public.teachers;
+drop policy if exists "teacher staff read teachers" on public.teachers;
+create policy "owner admin manage teachers" on public.teachers for all to authenticated using (organization_id = private.user_org_id() and private.user_role() in ('owner','admin')) with check (organization_id = private.user_org_id() and private.user_role() in ('owner','admin'));
+create policy "teacher staff read teachers" on public.teachers for select to authenticated using (organization_id = private.user_org_id() and private.user_role() in ('teacher','staff'));
 
--- Notices
- drop policy if exists "owner admin manage notices" on public.notices;
- drop policy if exists "teacher staff read notices" on public.notices;
- create policy "owner admin manage notices" on public.notices
-   for all to authenticated
-   using (organization_id = private.user_org_id() and private.user_role() in ('owner','admin'))
-   with check (organization_id = private.user_org_id() and private.user_role() in ('owner','admin'));
- create policy "teacher staff read notices" on public.notices
-   for select to authenticated
-   using (organization_id = private.user_org_id() and private.user_role() in ('teacher','staff'));
+drop policy if exists "owner admin manage notices" on public.notices;
+drop policy if exists "teacher staff read notices" on public.notices;
+create policy "owner admin manage notices" on public.notices for all to authenticated using (organization_id = private.user_org_id() and private.user_role() in ('owner','admin')) with check (organization_id = private.user_org_id() and private.user_role() in ('owner','admin'));
+create policy "teacher staff read notices" on public.notices for select to authenticated using (organization_id = private.user_org_id() and private.user_role() in ('teacher','staff'));
 
--- Profile management
- drop policy if exists "owner view member profiles" on public.profiles;
- drop policy if exists "owner manage member profiles" on public.profiles;
- drop policy if exists "users update own profile fields" on public.profiles;
- create policy "owner view member profiles" on public.profiles
-   for select to authenticated
-   using (organization_id = private.user_org_id() and private.user_role() = 'owner');
- create policy "owner manage member profiles" on public.profiles
-   for update to authenticated
-   using (organization_id = private.user_org_id() and private.user_role() = 'owner')
-   with check (organization_id = private.user_org_id() and role in ('owner','admin','teacher','staff'));
- create policy "users update own profile fields" on public.profiles
-   for update to authenticated
-   using (auth.uid() = id)
-   with check (auth.uid() = id and organization_id = private.user_org_id());
+drop policy if exists "owner view member profiles" on public.profiles;
+drop policy if exists "owner manage member profiles" on public.profiles;
+drop policy if exists "users update own profile fields" on public.profiles;
+create policy "owner view member profiles" on public.profiles for select to authenticated using (organization_id = private.user_org_id() and private.user_role() = 'owner');
+create policy "owner manage member profiles" on public.profiles for update to authenticated using (organization_id = private.user_org_id() and private.user_role() = 'owner') with check (organization_id = private.user_org_id() and role in ('owner','admin','teacher','staff'));
+create policy "users update own profile fields" on public.profiles for update to authenticated using (auth.uid() = id) with check (auth.uid() = id and organization_id = private.user_org_id());
 
 drop trigger if exists protect_profile_identity on public.profiles;
 create or replace function private.protect_profile_identity()
@@ -180,20 +104,12 @@ $$;
 create trigger protect_profile_identity before update on public.profiles for each row execute function private.protect_profile_identity();
 revoke all on function private.protect_profile_identity() from public, anon, authenticated;
 
-after policy placeholders are applied, keep the numbered migrations as the canonical upgrade path.
-
--- Required support tables.
 create table if not exists public.organization_invitations (
-  id uuid primary key default gen_random_uuid(),
-  organization_id uuid not null references public.organizations(id) on delete cascade,
-  email text not null,
-  full_name text,
-  role text not null check (role in ('admin','teacher','staff')),
-  invited_by uuid not null references public.profiles(id),
-  auth_user_id uuid,
+  id uuid primary key default gen_random_uuid(), organization_id uuid not null references public.organizations(id) on delete cascade,
+  email text not null, full_name text, role text not null check (role in ('admin','teacher','staff')),
+  invited_by uuid not null references public.profiles(id), auth_user_id uuid,
   status text not null default 'pending' check (status in ('pending','sent','accepted','cancelled')),
-  created_at timestamptz not null default now(),
-  accepted_at timestamptz
+  created_at timestamptz not null default now(), accepted_at timestamptz
 );
 alter table public.organization_invitations enable row level security;
 drop policy if exists "owners view organization invitations" on public.organization_invitations;
@@ -204,14 +120,9 @@ create policy "owners insert organization invitations" on public.organization_in
 create policy "owners manage organization invitations" on public.organization_invitations for delete to authenticated using (organization_id = private.user_org_id() and private.user_role() = 'owner');
 
 create table if not exists public.audit_logs (
-  id uuid primary key default gen_random_uuid(),
-  organization_id uuid not null references public.organizations(id) on delete cascade,
-  user_id uuid references auth.users(id) on delete set null,
-  action text not null,
-  metadata jsonb default '{}',
-  ip_address inet,
-  user_agent text,
-  created_at timestamptz not null default now()
+  id uuid primary key default gen_random_uuid(), organization_id uuid not null references public.organizations(id) on delete cascade,
+  user_id uuid references auth.users(id) on delete set null, action text not null, metadata jsonb default '{}',
+  ip_address inet, user_agent text, created_at timestamptz not null default now()
 );
 alter table public.audit_logs enable row level security;
 drop policy if exists "org members view audit logs" on public.audit_logs;
@@ -220,17 +131,11 @@ create policy "org members view audit logs" on public.audit_logs for select to a
 create policy "org members insert own audit logs" on public.audit_logs for insert to authenticated with check (organization_id = private.user_org_id() and user_id = auth.uid());
 
 create table if not exists public.organization_usage (
-  id uuid primary key default gen_random_uuid(),
-  organization_id uuid not null unique references public.organizations(id) on delete cascade,
-  plan text not null default 'free' check (plan in ('free','pro','enterprise')),
-  student_count integer not null default 0,
-  storage_mb numeric(10,2) not null default 0,
-  monthly_api_calls integer not null default 0,
-  billing_email text,
+  id uuid primary key default gen_random_uuid(), organization_id uuid not null unique references public.organizations(id) on delete cascade,
+  plan text not null default 'free' check (plan in ('free','pro','enterprise')), student_count integer not null default 0,
+  storage_mb numeric(10,2) not null default 0, monthly_api_calls integer not null default 0, billing_email text,
   subscription_status text default 'active' check (subscription_status in ('active','past_due','cancelled','trialing')),
-  subscription_expires_at timestamptz,
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
+  subscription_expires_at timestamptz, created_at timestamptz not null default now(), updated_at timestamptz not null default now()
 );
 alter table public.organization_usage enable row level security;
 drop policy if exists "org members view usage" on public.organization_usage;
