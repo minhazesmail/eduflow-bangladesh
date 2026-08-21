@@ -1,0 +1,1 @@
+This legacy operations module was superseded by operations-ui-v2.js during the core runtime stabilization. It is intentionally not loaded by app.html.
