@@ -39,6 +39,7 @@ There is one active operations implementation and one active password-recovery i
 - Attendance supports IndexedDB offline writes and automatic retry/sync when connectivity returns.
 - Demo/dev modes remain read-only and never write real customer data.
 - AI/OpenAI has been removed from the application.
+- Sensitive Edge Functions enforce backend rate limits; browser-side throttling is not a security control.
 
 ## Database migrations
 
@@ -61,6 +62,8 @@ Important migrations include:
 13. `20260821160000_branch_rls_hardening.sql`
 14. `20260821161000_guardian_rls_penetration_hardening.sql`
 15. `20260821161100_notice_status_compat.sql`
+16. `20260821170000_backend_rate_limiting.sql`
+17. `20260821180000_payment_reconciliation.sql`
 
 ## Edge Functions
 
@@ -70,7 +73,10 @@ invite-guardian
 dispatch-notification
 process-notification-queue
 payment-gateway
+payment-ipn
 ```
+
+`payment-gateway` is JWT-protected and creates server-owned payment intents. `payment-ipn` is the provider callback endpoint; it is intentionally public at the Edge Function gateway but immediately rate-limited and never trusts client-reported payment success.
 
 ## Environment variables / Supabase secrets
 
@@ -125,15 +131,25 @@ NAGAD_MERCHANT_NUMBER
 
 Do not place these values in browser `config.js`.
 
+### Payment reconciliation
+
+No client secret is accepted as proof of payment. A successful checkout only creates a `payment_transactions` row in `pending` state. The `payment-ipn` Edge Function calls the provider verification API directly, validates status, currency, transaction ID, and amount against the stored payment intent, then calls the service-role-only `reconcile_verified_payment()` RPC. Only that RPC can create the corresponding payment record and update `monthly_fee_ledger`.
+
+For bKash, the verification API is the source of truth: the provider status must be `Completed` and the verified BDT amount must exactly match the stored payment intent before reconciliation. bKash's public materials document Payment Gateway/Tokenized Checkout and provider-side transaction verification. ([bKash](https://www.bkash.com/en/business))
+
+If your merchant contract supplies an additional signed IPN/HMAC header, configure and validate it in the `payment-ipn` function before provider verification. The application does not treat a browser success redirect as proof of payment.
+
 ## Guardian security
 
 Guardian access is restricted by `guardian_accounts` + `student_guardians` links. RLS prevents a guardian from reading unrelated students, attendance, payments, results, batches, exams, or organization notices outside their linked organization. A repeatable penetration harness is in `supabase/tests/guardian_rls_penetration.sql`; run it in a disposable Supabase branch with two guardian fixtures.
 
 ## Online payments
 
-The Fees & Payments page exposes **Create online payment**. The browser calls the JWT-protected `payment-gateway` Edge Function, which talks to the provider server-side and never exposes merchant secrets.
+The Fees & Payments page exposes **Create online payment**. The browser calls the JWT-protected `payment-gateway` Edge Function, which creates a server-owned payment intent and talks to the provider server-side. The browser never receives merchant credentials and cannot mark a fee as paid.
 
-The bKash adapter supports Tokenized Checkout create/execute/status. Nagad support uses configurable merchant-contract endpoints; live activation still requires the exact merchant API contract and credentials.
+The callback URL is owned by the server and points to `payment-ipn`. The IPN handler performs direct provider verification and reconciles the stored intent into `monthly_fee_ledger` only after the provider response is validated.
+
+The bKash adapter supports Tokenized Checkout create/status/reconciliation. Nagad support uses configurable merchant-contract endpoints; live activation still requires the exact merchant API contract and credentials.
 
 ## E2E tests
 
