@@ -26,6 +26,7 @@ import '../runtime-feature-fixes.js';
 import './sms-actions.js';
 import './i18n-app-bridge.js';
 import './app-core-sms-patch.js';
+import './attrition-ui.js';
 
 // Wire language toggle + initial static apply
 (function () {
