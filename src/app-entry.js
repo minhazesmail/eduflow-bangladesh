@@ -20,7 +20,7 @@ import '../auth-recovery.js';
 import '../app-core.js';
 import '../operations-ui.js';
 import '../payment-checkout.js';
-import '../growth-features.js';
+import './growth-features-v2.js';
 import '../production-gaps-fix.js';
 import '../runtime-feature-fixes.js';
 import './sms-actions.js';
