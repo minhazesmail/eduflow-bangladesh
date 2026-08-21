@@ -1,4 +1,4 @@
-/* EduFlow shared runtime: one Supabase client, lightweight route cancellation, stale-AI guard. */
+/* EduFlow shared runtime: one Supabase client, route cancellation, safe toast. */
 (function () {
   'use strict';
 
@@ -13,11 +13,7 @@
   function getClient() {
     if (!sharedClient) {
       sharedClient = nativeCreateClient(cfg.supabaseUrl, cfg.supabaseKey, {
-        auth: {
-          autoRefreshToken: true,
-          persistSession: true,
-          detectSessionInUrl: true
-        }
+        auth: { autoRefreshToken: true, persistSession: true, detectSessionInUrl: true }
       });
     }
     return sharedClient;
@@ -34,11 +30,7 @@
     activeController = typeof AbortController !== 'undefined' ? new AbortController() : null;
     routeSerial += 1;
     window.dispatchEvent(new CustomEvent('eduflow:route-start', {
-      detail: {
-        name,
-        serial: routeSerial,
-        signal: activeController?.signal || null
-      }
+      detail: { name, serial: routeSerial, signal: activeController?.signal || null }
     }));
     return activeController?.signal || null;
   }
@@ -46,15 +38,42 @@
   function cancelRoute(reason = 'route-cancelled') {
     activeController?.abort(reason);
     activeController = null;
-    window.dispatchEvent(new CustomEvent('eduflow:route-cancel', {
-      detail: { reason }
-    }));
+    window.dispatchEvent(new CustomEvent('eduflow:route-cancel', { detail: { reason } }));
+  }
+
+  function safeToast(message, type = 'info') {
+    try {
+      const existing = window.EduFlow?.toast?.(message, type);
+      if (existing !== undefined) return existing;
+    } catch (_) {}
+
+    try {
+      const root = document.getElementById('toast-root') || document.body;
+      const node = document.createElement('div');
+      node.className = 'eduflow-runtime-toast';
+      node.textContent = message == null ? 'Something went wrong.' : String(message);
+      Object.assign(node.style, {
+        position: 'fixed',
+        right: '18px',
+        bottom: '18px',
+        zIndex: '99999',
+        maxWidth: 'min(420px, calc(100vw - 36px))',
+        padding: '12px 14px',
+        borderRadius: '12px',
+        background: '#111827',
+        color: '#fff',
+        boxShadow: '0 14px 40px rgba(0,0,0,.18)',
+        font: '600 13px/1.4 system-ui,sans-serif'
+      });
+      root.appendChild(node);
+      window.setTimeout(() => node.remove(), 4200);
+    } catch (_) {
+      try { window.alert(String(message || 'Something went wrong.')); } catch (__) {}
+    }
   }
 
   window.EduFlowRuntime = {
-    get db() {
-      return getClient();
-    },
+    get db() { return getClient(); },
     async getSession() {
       const { data, error } = await getClient().auth.getSession();
       if (error) throw error;
@@ -62,27 +81,9 @@
     },
     beginRoute,
     cancelRoute,
-    get routeSignal() {
-      return activeController?.signal || null;
-    },
-    get routeSerial() {
-      return routeSerial;
-    }
+    get routeSignal() { return activeController?.signal || null; },
+    get routeSerial() { return routeSerial; }
   };
 
-  // Hard-stop stale AI navigation without adding another router.
-  document.addEventListener('click', (event) => {
-    const target = event.target instanceof Element
-      ? event.target.closest('[data-growth-page="assistant"],[data-growth-action="open-assistant"],a[href="#assistant"]')
-      : null;
-    if (!target) return;
-    event.preventDefault();
-    event.stopImmediatePropagation();
-    location.hash = '#attention';
-  }, true);
-
-  window.addEventListener('hashchange', () => {
-    if (location.hash.replace(/^#\/?/, '') !== 'assistant') return;
-    history.replaceState(null, '', '#attention');
-  }, true);
+  window.eduflowSafeToast = safeToast;
 })();
