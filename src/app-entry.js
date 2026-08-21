@@ -7,6 +7,7 @@ import '../config.js';
 import './supabase-global.js';
 import './eduflow-store.js';
 import './store-refresh-bridge.js';
+import './security-sanitize.js';
 import '../dev-access.js';
 import '../branch-context.js';
 import '../runtime-stability.js';
