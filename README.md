@@ -1,110 +1,157 @@
 # EduFlow Bangladesh
 
-Bangladesh-first SaaS for coaching center management. Built with vanilla HTML/CSS/JS, Supabase Auth/Postgres, and Vercel.
+Bangladesh-first SaaS for coaching-center management. The production app uses Vanilla HTML/CSS/JS, Supabase Auth/Postgres, Supabase Edge Functions, and Vercel.
 
-## What's Fixed
+## Runtime architecture
 
-| Issue | Fix |
-|-------|-----|
-| Hardcoded Supabase credentials | Moved to `config.js` + environment variables |
-| No favicon / tab thumbnail | Added SVG favicon, PWA manifest, Apple touch icon |
-| No billing layer | Added `organization_usage` table + Billing page with plan tiers |
-| No rate limiting | Client-side rate limiter + configurable via env vars |
-| No audit logging | Added `audit_logs` table + auto-logging on data changes |
-| No offline support | Offline banner + action queue with sync on reconnect |
-| Missing RLS policies | Added organizations RLS, invitation insert policy |
-| No usage quotas | Database trigger enforces student limits per plan |
-| Missing Edge Function | Complete `invite-member` Edge Function with JWT validation |
-| No loading states | Loading screen, button disabled states, skeletons |
-| XSS vulnerability | All dynamic content uses `escapeHtml()` |
-| No SEO/meta tags | Full Open Graph, Twitter Cards, description, theme-color |
-| No PWA support | `manifest.json`, service-worker ready structure |
-| Monolithic app.js | Modularized: `config.js`, `rbac.js`, `team.js`, `app.js` |
-| No session refresh | `onAuthStateChange` handles token refresh & sign-out |
+The active browser runtime is intentionally small and single-path:
 
-## File Structure
-
+```text
+index.html → landing site
+app.html
+  ├─ config.js
+  ├─ Supabase JS client
+  ├─ mock-data.js
+  ├─ mock-data-normalize.js
+  ├─ demo-mode.js
+  ├─ app-core.js
+  └─ operations-ui-v2.js
 ```
-├── index.html              # Page shell with favicon, meta tags, PWA links
-├── config.js               # Environment config loader (NO hardcoded secrets)
-├── app.js                  # Main app: routing, pages, modals, toast, offline
-├── rbac.js                 # Role-based access control module
-├── team.js                 # Owner-only team management
-├── styles.css              # UI styling + loading screen + offline banner
-├── manifest.json           # PWA manifest
-├── migration.sql           # Complete database hardening migration
-└── supabase/
-    └── functions/
-        └── invite-member/
-            └── index.ts    # JWT-protected Edge Function
+
+`app-core.js` is the main application runtime. The old `app.js`, `rbac.js`, `team.js`, `auth-ux.js`, `communication.js`, and `communication-access.js` implementations have been retired to avoid duplicate runtimes.
+
+## Fresh Supabase setup
+
+1. Create a Supabase project.
+2. Run `supabase/migrations/0001_base_schema.sql`.
+3. Run `migration.sql`.
+4. Run `supabase/migrations/0002_stabilization.sql`.
+5. Deploy the invite function:
+
+```bash
+supabase functions deploy invite-member
 ```
+
+## Existing-project upgrade
+
+For an existing EduFlow database, run:
+
+```text
+migration.sql
+supabase/migrations/0002_stabilization.sql
+```
+
+`0002_stabilization.sql` is idempotent for the policies/indexes it manages.
+
+## Environment variables
+
+### Vercel / browser configuration
+
+The browser uses a Supabase project URL and publishable/anon key. These values are safe to expose to the browser when RLS is correctly configured.
+
+Recommended deployment settings:
+
+```text
+SUPABASE_URL
+SUPABASE_ANON_KEY
+APP_ENV
+RATE_LIMIT_MAX
+RATE_LIMIT_WINDOW_MS
+MAX_STUDENTS_FREE
+MAX_STUDENTS_PRO
+MAX_STUDENTS_ENTERPRISE
+```
+
+The current static Vercel build resolves the public browser values through `config.js`.
+
+### Supabase Edge Function secrets
+
+For `invite-member`:
+
+```text
+SUPABASE_URL
+SUPABASE_SERVICE_ROLE_KEY
+SITE_URL
+```
+
+Never expose `SUPABASE_SERVICE_ROLE_KEY` to the browser.
+
+## Demo mode
+
+Open:
+
+```text
+/app.html?demo=true
+```
+
+Demo mode:
+
+- uses in-memory sample Bangladesh data
+- does not read or write production Postgres
+- disables mutations
+- shows a persistent Demo Mode state
+- provides an `Exit Demo` action
+
+## Invite flow
+
+The owner uses the Team page to call the JWT-protected `invite-member` Edge Function.
+
+The function:
+
+1. validates the caller JWT
+2. verifies the caller is the organization owner
+3. creates an `organization_invitations` row
+4. sends the Supabase Auth invitation email
+5. includes the invitation ID in user metadata
+6. marks the invitation as sent
+
+The database onboarding trigger consumes the invitation metadata and creates the invited profile with the assigned role.
+
+## Security model
+
+- RLS is enabled on application tables.
+- Tenant isolation uses `private.user_org_id()`.
+- Role authorization is enforced in database policies.
+- The signed-in user has an explicit self-view policy on `profiles` so first login can load the profile.
+- Service-role credentials exist only in Edge Functions.
+- Demo data never writes to Supabase.
+- Dynamic UI output is escaped before rendering.
+
+## Operational features
+
+Current production runtime includes:
+
+- students and guardian records
+- batches
+- bulk/date-based attendance
+- fee/payment CRUD
+- exams and results CRUD
+- notices CRUD
+- owner team role management
+- owner team invitations
+- billing/usage display
+- audit-log display
+- offline status handling
+- read-only Try Demo sandbox
 
 ## Deployment
 
-### 1. Supabase Setup
+Vercel serves the static frontend. Supabase hosts Auth, Postgres, and Edge Functions.
 
-1. Create a new Supabase project
-2. Run `migration.sql` in the SQL Editor
-3. Set up the Edge Function:
-   ```bash
-   supabase functions deploy invite-member
-   ```
-4. Configure Edge Function secrets:
-   ```bash
-   supabase secrets set SUPABASE_URL=your-url
-   supabase secrets set SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
-   ```
-
-### 2. Vercel Setup
-
-1. Connect your GitHub repo to Vercel
-2. Set environment variables in Vercel Project Settings:
-   - `SUPABASE_URL`
-   - `SUPABASE_ANON_KEY`
-3. Deploy
-
-### 3. Local Development
+For local static development:
 
 ```bash
-# Serve static files
 npx serve . --listen 3000
-
-# Or use Vercel CLI
-vercel dev
 ```
 
-For local dev, set credentials via browser console:
-```js
-localStorage.setItem('ef_supabase_url', 'your-url');
-localStorage.setItem('ef_supabase_key', 'your-anon-key');
-```
+## Production checklist
 
-## Environment Variables
+Before launch, verify:
 
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `SUPABASE_URL` | Yes | Your Supabase project URL |
-| `SUPABASE_ANON_KEY` | Yes | Your Supabase anon/public key |
-| `APP_ENV` | No | `development` / `staging` / `production` |
-| `RATE_LIMIT_MAX` | No | Max requests per window (default: 100) |
-| `RATE_LIMIT_WINDOW_MS` | No | Rate limit window in ms (default: 60000) |
-| `MAX_STUDENTS_FREE` | No | Free plan student limit (default: 50) |
-| `MAX_STUDENTS_PRO` | No | Pro plan student limit (default: 500) |
-| `MAX_STUDENTS_ENTERPRISE` | No | Enterprise plan limit (default: 5000) |
-
-## Security Checklist
-
-- [x] No service-role key in browser
-- [x] RLS policies on all tables
-- [x] Tenant isolation via `private.user_org_id()`
-- [x] Role checks in database policies
-- [x] Frontend guards + backend enforcement
-- [x] Self-role/self-org change prevention
-- [x] Audit logging for all sensitive actions
-- [x] Input sanitization (XSS prevention)
-- [x] Rate limiting
-- [x] Quota enforcement at database level
-
-## License
-
-MIT
+- `0001_base_schema.sql` succeeds on a fresh database
+- `migration.sql` succeeds immediately after it
+- `0002_stabilization.sql` succeeds
+- owner/admin/teacher/staff RLS matrix is tested
+- invite function secrets are configured
+- Demo Mode never touches production data
+- Vercel production deployment is READY
