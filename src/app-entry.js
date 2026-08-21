@@ -1,6 +1,7 @@
 import '../styles.css';
 import '../brand-refresh.css';
 import '../auth-modern.css';
+import '../expenses-profit.css';
 
 import '../config.js';
 import './supabase-global.js';
