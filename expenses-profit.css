@@ -1,0 +1,32 @@
+/* Expenses & Profit KPI accents — scoped to the Expenses page only. */
+#page-content .page-head:has([data-growth-action="new-expense"]) + .grid.grid-3 > .card:nth-child(1){
+  border-color:#00a8ff;
+  box-shadow:0 0 0 1px rgba(0,168,255,.7),0 0 24px rgba(0,168,255,.28);
+}
+#page-content .page-head:has([data-growth-action="new-expense"]) + .grid.grid-3 > .card:nth-child(1) .label,
+#page-content .page-head:has([data-growth-action="new-expense"]) + .grid.grid-3 > .card:nth-child(1) .value{
+  color:#00a8ff;
+  text-shadow:0 0 12px rgba(0,168,255,.55);
+}
+#page-content .page-head:has([data-growth-action="new-expense"]) + .grid.grid-3 > .card:nth-child(2){
+  border-color:#ff3158;
+  box-shadow:0 0 0 1px rgba(255,49,88,.7),0 0 24px rgba(255,49,88,.25);
+}
+#page-content .page-head:has([data-growth-action="new-expense"]) + .grid.grid-3 > .card:nth-child(2) .label,
+#page-content .page-head:has([data-growth-action="new-expense"]) + .grid.grid-3 > .card:nth-child(2) .value{
+  color:#ff3158;
+  text-shadow:0 0 12px rgba(255,49,88,.5);
+}
+#page-content .page-head:has([data-growth-action="new-expense"]) + .grid.grid-3 > .card:nth-child(3){
+  border-color:#39ff88;
+  box-shadow:0 0 0 1px rgba(57,255,136,.7),0 0 24px rgba(57,255,136,.24);
+}
+#page-content .page-head:has([data-growth-action="new-expense"]) + .grid.grid-3 > .card:nth-child(3) .label,
+#page-content .page-head:has([data-growth-action="new-expense"]) + .grid.grid-3 > .card:nth-child(3) .value{
+  color:#39ff88;
+  text-shadow:0 0 12px rgba(57,255,136,.5);
+}
+@media (prefers-reduced-motion:no-preference){
+  #page-content .page-head:has([data-growth-action="new-expense"]) + .grid.grid-3 > .card{transition:border-color .2s ease,box-shadow .2s ease,transform .2s ease}
+  #page-content .page-head:has([data-growth-action="new-expense"]) + .grid.grid-3 > .card:hover{transform:translateY(-2px)}
+}
