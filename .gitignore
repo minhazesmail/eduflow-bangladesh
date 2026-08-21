@@ -12,7 +12,6 @@ build/
 .env.*.local
 
 # Configuration files (contain secrets)
-config.js
 config.local.js
 
 # IDE
@@ -31,3 +30,5 @@ npm-debug.log*
 
 # Test coverage
 coverage/
+playwright-report/
+test-results/
