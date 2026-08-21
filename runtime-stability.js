@@ -13,22 +13,15 @@
           if (growthRouterObserver) {
             const nav = document.querySelector('.nav');
             if (!nav) return;
-            if (nav.dataset.growthInjected === '1') {
-              try { observer.disconnect(); } catch (_) {}
-              return;
-            }
+            callback([], observer);
+            try { observer.disconnect(); } catch (_) {}
+            return;
           }
           const pageContentOnly = observesBody && mutations.length > 0 && mutations.every((mutation) => {
             const target = mutation.target;
             return target && typeof target.closest === 'function' && target.closest('#page-content');
           });
           if (!pageContentOnly) callback(mutations, observer);
-          if (growthRouterObserver) {
-            const nav = document.querySelector('.nav');
-            if (nav?.dataset.growthInjected === '1') {
-              try { observer.disconnect(); } catch (_) {}
-            }
-          }
         });
         this.__eduflowMarkBody = () => { observesBody = true; };
       }
@@ -52,6 +45,39 @@
       root.appendChild(node); window.setTimeout(()=>node.remove(),4200);
     } catch (_) { try { window.alert(String(message||'Something went wrong.')); } catch (__) {} }
   };
+  const nativeCreateClient = window.supabase?.createClient;
+  if (nativeCreateClient && !window.__eduflowAuthBootstrap) {
+    window.__eduflowAuthBootstrap = true;
+    const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
+    const waitForProfile = async (client, userId) => {
+      if (!userId) return;
+      for (let i = 0; i < 10; i++) {
+        try {
+          const { data, error } = await client.from('profiles').select('id,organization_id,role').eq('id', userId).maybeSingle();
+          if (!error && data?.id && data.organization_id) return data;
+        } catch (_) {}
+        await delay(400);
+      }
+    };
+    window.supabase.createClient = function (...args) {
+      const client = nativeCreateClient(...args);
+      if (!client?.auth || client.auth.__eduflowWrapped) return client;
+      const nativeSignIn = client.auth.signInWithPassword.bind(client.auth);
+      const nativeSignUp = client.auth.signUp.bind(client.auth);
+      client.auth.signInWithPassword = async (...signInArgs) => {
+        const result = await nativeSignIn(...signInArgs);
+        if (!result?.error && result.data?.user?.id) await waitForProfile(client, result.data.user.id);
+        return result;
+      };
+      client.auth.signUp = async (...signUpArgs) => {
+        const result = await nativeSignUp(...signUpArgs);
+        if (!result?.error && result.data?.user?.id && result.data?.session) await waitForProfile(client, result.data.user.id);
+        return result;
+      };
+      Object.defineProperty(client.auth, '__eduflowWrapped', { value: true, enumerable: false });
+      return client;
+    };
+  }
   function wirePageResilience() {
     const page=document.getElementById('page-content'); if(!page||page.__eduflowResilience)return; page.__eduflowResilience=true;
     const observer=new NativeMutationObserver(()=>{page.querySelectorAll('table').forEach(table=>{if(table.parentElement?.classList.contains('table-wrapper'))return;const wrapper=document.createElement('div');wrapper.className='table-wrapper';wrapper.style.overflowX='auto';wrapper.style.width='100%';table.parentNode.insertBefore(wrapper,table);wrapper.appendChild(table);});});
