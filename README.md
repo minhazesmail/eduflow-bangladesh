@@ -9,21 +9,24 @@ index.html → landing site
 app.html
   ├─ config.js
   ├─ Supabase JS client
+  ├─ dev-access.js
   ├─ branch-context.js
   ├─ runtime-stability.js
   ├─ mock-data.js
   ├─ mock-data-normalize.js
   ├─ demo-mode.js
-  ├─ app-core.js
+  ├─ core-runtime.js        ← one shared Supabase client
+  ├─ auth-recovery.js
+  ├─ app-core.js             ← primary application runtime
   ├─ operations-ui-v2.js
   ├─ growth-features.js
-  ├─ ai-removal.js
   ├─ production-gaps-fix.js
-  ├─ runtime-feature-fixes.js
-  └─ auth-recovery.js
+  └─ runtime-feature-fixes.js
 
-guardian.html → mobile-first guardian portal
+guardian.html → independent guardian portal client
 ```
+
+There is one active dashboard runtime and one shared Supabase client per page. Compatibility/AI-removal shims are no longer part of the dashboard boot chain.
 
 ## Product features
 
@@ -33,19 +36,23 @@ EduFlow does not include an AI assistant or OpenAI integration.
 
 ## Database migrations
 
-For new environments, run the canonical base/security migrations and growth migrations in order, including:
+The canonical migration source is `supabase/migrations/`. Do not use a root `migration.sql` snapshot or the old root `migrations/` directory.
 
-1. `supabase/migrations/0001_base_schema.sql`
-2. `migration.sql`
-3. `supabase/migrations/0002_stabilization.sql`
-4. `supabase/migrations/0003_functionality_hardening.sql`
-5. `supabase/migrations/0004_onboarding_trigger.sql`
-6. `supabase/migrations/20260821141000_growth_features.sql`
-7. `supabase/migrations/20260821142000_guardian_portal.sql`
-8. `supabase/migrations/20260821143000_automation_triggers.sql`
-9. `supabase/migrations/20260821143500_production_gap_hardening.sql`
-10. `supabase/migrations/20260821144000_branch_context.sql`
-11. `supabase/migrations/20260821150000_remove_ai.sql`
+Run the migrations in repository order, including:
+
+1. `0001_base_schema.sql`
+2. `0002_stabilization.sql`
+3. `0003_functionality_hardening.sql`
+4. `0004_onboarding_trigger.sql`
+5. `0005_monthly_fee_ledger.sql`
+6. `20260821141000_growth_features.sql`
+7. `20260821142000_guardian_portal.sql`
+8. `20260821143000_automation_triggers.sql`
+9. `20260821143500_production_gap_hardening.sql`
+10. `20260821144000_branch_context.sql`
+11. `20260821145000_attention_metrics_rpc.sql`
+12. `20260821150000_remove_ai.sql`
+13. `20260821160000_branch_rls_hardening.sql`
 
 ## Edge Functions
 
@@ -90,13 +97,13 @@ The application and `payment-gateway` Edge Function provide a secure server-side
 
 ## Branch context
 
-The active branch is stored in `localStorage` as `eduflow.activeBranch`. `branch-context.js` applies the selected branch automatically to branch-scoped Supabase reads, updates, deletes, inserts and upserts, while database triggers default new records to the signed-in user's profile branch when one is configured.
+The active branch is stored in `localStorage` as `eduflow.activeBranch`. `branch-context.js` applies the selected branch to branch-scoped Supabase reads/writes, and Postgres RLS now enforces branch visibility for teacher/staff while owners/admins can oversee the full organization.
 
 Selecting **All branches** clears the branch filter.
 
 ## Attention Center
 
-Attendance is calculated from real `attendance` records over the last 90 days. Students with no attendance history are shown separately and are not falsely treated as low-attendance.
+Attendance is calculated from real `attendance` records through `get_attention_metrics()` over the last 90 days. Students with no attendance history are shown separately and are not falsely treated as low-attendance. There is only one active Attention Center implementation.
 
 ## Documents
 
@@ -110,16 +117,21 @@ Open `/guardian.html`. Guardians are invited internally and receive guardian-sco
 
 Open `/app.html?demo=true`. Demo mode uses in-memory Bangladesh sample data, never reads/writes production Postgres, disables mutations, and shows persistent Demo Mode state.
 
+## Development access
+
+Open `/app.html?dev=true` for an explicit read-only sample workspace during development. It sets Demo Mode and never creates a real authenticated session. Do not use this mode for customer accounts.
+
 ## Security model
 
 - RLS is enabled on application and growth tables.
 - Tenant isolation uses `private.user_org_id()`.
-- Guardian access is read-only and scoped through guardian account links.
+- Branch isolation is enforced in Postgres for scoped resources.
+- Guardian access is scoped through guardian account links.
 - Security-definer functions use explicit search paths.
 - Service-role credentials and provider secrets exist only in server-side functions.
 - Dynamic UI output is escaped.
-- Branch context is enforced at both the browser query boundary and database insert default layer.
+- The browser is not a notification queue worker; queued notifications require server-side scheduling/dispatch.
 
 ## Deployment
 
-Vercel serves the frontend and serverless notification-worker endpoint. The project does not use a Vercel Cron schedule because the current Vercel Hobby plan rejects sub-daily cron expressions and can fail deployments before creating a deployment record. Use an external scheduler or a Supabase-native scheduled mechanism for periodic queue processing.
+Vercel serves the frontend and serverless notification-worker endpoint. The project does not use a sub-daily Vercel Cron schedule because the current Hobby plan rejects that pattern. Use Supabase-native scheduling or an external scheduler to invoke the notification queue worker.
