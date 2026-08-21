@@ -1,6 +1,8 @@
 import '../landing.css';
 import '../landing-stability.css';
 import '../landing-modern.css';
+import './i18n.js';
+import './site-language-v2.js';
 
 function setMenuState(open) {
   const nav = document.querySelector('.nav-links');
