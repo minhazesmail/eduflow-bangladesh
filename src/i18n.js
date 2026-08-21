@@ -1,6 +1,6 @@
 /**
- * Lightweight i18n for EduFlow Bangladesh.
- * No external dependency. Supports en / bn with localStorage persistence.
+ * EduFlowI18n — single language module for app, landing, auth, guardian.
+ * en / bn, localStorage persistence, no external dependency.
  */
 (function () {
   'use strict';
@@ -150,7 +150,49 @@
       'guardian.students': 'Students',
       'guardian.language': 'Language',
       'guardian.load_error': 'Could not load portal',
-      'guardian.try_again': 'Please try again.'
+      'guardian.try_again': 'Please try again.',
+      'site.features': 'Features',
+      'site.how': 'How it works',
+      'site.roles': 'For your team',
+      'site.contact': 'Contact',
+      'site.signIn': 'Sign in',
+      'site.register': 'Register your Center',
+      'site.eyebrow': 'Built for Bangladesh',
+      'site.heroTitle': 'Run your coaching center like a modern business.',
+      'site.heroText': 'EduFlow replaces the spreadsheet-and-chat maze with one sharp operating system for students, batches, attendance, fees, exams and team workflows.',
+      'site.demo': 'Explore the live demo',
+      'site.workspace': 'Create your workspace',
+      'site.note': 'No account needed. Explore sample data instantly. No signup, no commitment.',
+      'site.bdt': 'BDT-ready',
+      'site.access': 'Role-based access',
+      'site.guardian': 'Guardian-first workflows',
+      'site.operating': 'The operating layer',
+      'site.less': 'Less admin. More control.',
+      'site.operatingSub': 'Everything your center runs every day, connected in one consistent system.',
+      'site.rhythm': 'A calmer daily rhythm',
+      'site.workflowTitle': 'From classroom to office without the handoff mess.',
+      'site.workflowSub': 'One system for the operational loop that keeps a coaching center moving.',
+      'site.rolesEyebrow': 'Built for the whole center',
+      'site.rolesTitle': 'Everyone sees the work they need.',
+      'site.rolesSub': 'Clear role boundaries keep daily operations fast without making the workspace complicated.',
+      'site.ctaEyebrow': 'See it before you build it',
+      'site.ctaTitle': 'Explore EduFlow with a real-looking Bangladesh demo.',
+      'site.ctaText': 'Open the full dashboard instantly with sample students, batches, attendance and fees. No account required.',
+      'site.openDemo': 'Explore the demo →',
+      'site.create': 'Create your workspace',
+      'site.owner': 'Full control',
+      'site.admin': 'Run the center',
+      'site.teacher': 'Focus on teaching',
+      'site.staff': 'Keep things moving',
+      'site.setup': 'Set up',
+      'site.run': 'Run the day',
+      'site.close': 'Close the loop',
+      'site.student360': 'Student 360',
+      'site.attendance': 'Attendance',
+      'site.fees': 'Fees & payments',
+      'site.exams': 'Exams & results',
+      'site.team': 'Team roles',
+      'site.guardianReady': 'Guardian-ready'
     },
     bn: {
       'app.title': 'এডুফ্লো ড্যাশবোর্ড',
@@ -293,7 +335,49 @@
       'guardian.students': 'শিক্ষার্থী',
       'guardian.language': 'ভাষা',
       'guardian.load_error': 'পোর্টাল লোড করা যায়নি',
-      'guardian.try_again': 'আবার চেষ্টা করুন।'
+      'guardian.try_again': 'আবার চেষ্টা করুন।',
+      'site.features': 'ফিচার',
+      'site.how': 'কীভাবে কাজ করে',
+      'site.roles': 'আপনার টিমের জন্য',
+      'site.contact': 'যোগাযোগ',
+      'site.signIn': 'সাইন ইন',
+      'site.register': 'সেন্টার নিবন্ধন',
+      'site.eyebrow': 'বাংলাদেশের জন্য তৈরি',
+      'site.heroTitle': 'আপনার কোচিং সেন্টারকে আধুনিক ব্যবসার মতো পরিচালনা করুন।',
+      'site.heroText': 'EduFlow স্প্রেডশিট ও চ্যাটের জটিলতার বদলে শিক্ষার্থী, ব্যাচ, উপস্থিতি, ফি, পরীক্ষা ও টিমের কাজের জন্য একটি স্মার্ট অপারেটিং সিস্টেম দেয়।',
+      'site.demo': 'লাইভ ডেমো দেখুন',
+      'site.workspace': 'আপনার ওয়ার্কস্পেস তৈরি করুন',
+      'site.note': 'অ্যাকাউন্ট লাগবে না। সঙ্গে সঙ্গে নমুনা ডেটা দেখুন। সাইনআপ বা কোনো বাধ্যবাধকতা নেই।',
+      'site.bdt': 'BDT প্রস্তুত',
+      'site.access': 'রোলভিত্তিক অ্যাক্সেস',
+      'site.guardian': 'অভিভাবক-কেন্দ্রিক ওয়ার্কফ্লো',
+      'site.operating': 'অপারেটিং লেয়ার',
+      'site.less': 'কম প্রশাসনিক কাজ। বেশি নিয়ন্ত্রণ।',
+      'site.operatingSub': 'আপনার সেন্টারের প্রতিদিনের কাজগুলো একটি সমন্বিত সিস্টেমে।',
+      'site.rhythm': 'আরও শান্ত দৈনিক ছন্দ',
+      'site.workflowTitle': 'ক্লাসরুম থেকে অফিস—হ্যান্ডঅফের ঝামেলা ছাড়াই।',
+      'site.workflowSub': 'কোচিং সেন্টার সচল রাখার পুরো অপারেশনাল লুপ একটি সিস্টেমে।',
+      'site.rolesEyebrow': 'পুরো সেন্টারের জন্য',
+      'site.rolesTitle': 'প্রত্যেকে তার প্রয়োজনীয় কাজই দেখবে।',
+      'site.rolesSub': 'পরিষ্কার রোল সীমা দৈনিক কাজকে দ্রুত রাখে, ওয়ার্কস্পেসকে জটিল করে না।',
+      'site.ctaEyebrow': 'শুরু করার আগে দেখে নিন',
+      'site.ctaTitle': 'বাংলাদেশের বাস্তবসম্মত ডেমো দিয়ে EduFlow দেখুন।',
+      'site.ctaText': 'নমুনা শিক্ষার্থী, ব্যাচ, উপস্থিতি ও ফি-সহ পুরো ড্যাশবোর্ড সঙ্গে সঙ্গে খুলুন। অ্যাকাউন্ট লাগবে না।',
+      'site.openDemo': 'ডেমো দেখুন →',
+      'site.create': 'ওয়ার্কস্পেস তৈরি করুন',
+      'site.owner': 'পূর্ণ নিয়ন্ত্রণ',
+      'site.admin': 'সেন্টার পরিচালনা',
+      'site.teacher': 'শিক্ষাদানে মনোযোগ',
+      'site.staff': 'কাজ সচল রাখুন',
+      'site.setup': 'সেটআপ',
+      'site.run': 'দিন চালান',
+      'site.close': 'লুপ সম্পূর্ণ করুন',
+      'site.student360': 'স্টুডেন্ট ৩৬০',
+      'site.attendance': 'উপস্থিতি',
+      'site.fees': 'ফি ও পেমেন্ট',
+      'site.exams': 'পরীক্ষা ও ফলাফল',
+      'site.team': 'টিম রোল',
+      'site.guardianReady': 'অভিভাবক প্রস্তুত'
     }
   };
 
@@ -316,23 +400,29 @@
     let str = (dict[current] && dict[current][key]) || (dict.en && dict.en[key]) || key;
     if (params && typeof params === 'object') {
       Object.keys(params).forEach((k) => {
-        str = str.replace(new RegExp(`\\{${k}\\}`, 'g'), String(params[k]));
+        str = str.replace(new RegExp('\\{' + k + '\\}', 'g'), String(params[k]));
       });
     }
     return str;
   }
 
-  function getLang() { return current; }
+  function getLang() {
+    return current;
+  }
 
   function setLang(lang) {
     if (lang !== 'en' && lang !== 'bn') return;
     current = lang;
-    try { localStorage.setItem(STORAGE_KEY, lang); } catch (_) {}
+    try {
+      localStorage.setItem(STORAGE_KEY, lang);
+    } catch (_) {}
     document.documentElement.lang = lang === 'bn' ? 'bn' : 'en';
     window.dispatchEvent(new CustomEvent('eduflow:langchange', { detail: { lang } }));
   }
 
-  function toggleLang() { setLang(current === 'bn' ? 'en' : 'bn'); }
+  function toggleLang() {
+    setLang(current === 'bn' ? 'en' : 'bn');
+  }
 
   function applyStatic() {
     document.querySelectorAll('[data-i18n]').forEach((el) => {
@@ -349,11 +439,139 @@
     }
   }
 
+  function setText(sel, key) {
+    const el = document.querySelector(sel);
+    if (el) el.textContent = t(key);
+  }
+
+  function ensureLangButton(root, selector) {
+    if (!root || root.querySelector('.eduflow-lang-btn')) return;
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'btn btn-ghost eduflow-lang-btn language-toggle';
+    b.addEventListener('click', () => toggleLang());
+    const host = selector ? root.querySelector(selector) : root;
+    if (host) host.prepend(b);
+    else root.prepend(b);
+  }
+
+  function applyLanding() {
+    if (!document.querySelector('.site-shell')) return;
+    ensureLangButton(document.querySelector('.header-actions'));
+    const map = [
+      ['.nav-links a:nth-child(1)', 'site.features'],
+      ['.nav-links a:nth-child(2)', 'site.how'],
+      ['.nav-links a:nth-child(3)', 'site.roles'],
+      ['.nav-links a:nth-child(4)', 'site.contact'],
+      ['.header-actions a.btn-ghost', 'site.signIn'],
+      ['.header-actions a.btn-primary', 'site.register'],
+      ['.hero .eyebrow', 'site.eyebrow'],
+      ['.hero h1', 'site.heroTitle'],
+      ['.hero-text', 'site.heroText'],
+      ['.hero-actions a.btn-primary', 'site.demo'],
+      ['.hero-actions a.btn-ghost', 'site.workspace'],
+      ['.hero-note', 'site.note'],
+      ['#features .eyebrow', 'site.operating'],
+      ['#features h2', 'site.less'],
+      ['#features .section-heading p', 'site.operatingSub'],
+      ['#workflow .eyebrow', 'site.rhythm'],
+      ['#workflow h2', 'site.workflowTitle'],
+      ['#workflow .section-heading p', 'site.workflowSub'],
+      ['#roles .eyebrow', 'site.rolesEyebrow'],
+      ['#roles h2', 'site.rolesTitle'],
+      ['#roles .section-heading p', 'site.rolesSub'],
+      ['#contact .eyebrow', 'site.ctaEyebrow'],
+      ['#contact h2', 'site.ctaTitle'],
+      ['#contact p', 'site.ctaText'],
+      ['#contact .cta-actions a.btn-primary', 'site.openDemo'],
+      ['#contact .cta-actions a.btn-ghost', 'site.create'],
+      ['.site-footer > a', 'site.openDemo']
+    ];
+    map.forEach(([sel, key]) => setText(sel, key));
+    const trust = ['site.bdt', 'site.access', 'site.guardian'];
+    document.querySelectorAll('.trust-row .trust-item').forEach((el, i) => {
+      if (trust[i]) el.textContent = t(trust[i]);
+    });
+    const feats = ['site.student360', 'site.attendance', 'site.fees', 'site.exams', 'site.team', 'site.guardianReady'];
+    document.querySelectorAll('.feature-card h3').forEach((el, i) => {
+      if (feats[i]) el.textContent = t(feats[i]);
+    });
+    const steps = ['site.setup', 'site.run', 'site.close'];
+    document.querySelectorAll('.step h3').forEach((el, i) => {
+      if (steps[i]) el.textContent = t(steps[i]);
+    });
+    const roles = ['site.owner', 'site.admin', 'site.teacher', 'site.staff'];
+    document.querySelectorAll('.role-grid h3').forEach((el, i) => {
+      if (roles[i]) el.textContent = t(roles[i]);
+    });
+    const btn = document.querySelector('.eduflow-lang-btn');
+    if (btn) btn.textContent = current === 'bn' ? 'English' : 'বাংলা';
+  }
+
+  function applyAuth() {
+    const root = document.getElementById('auth-screen');
+    if (!root || root.classList.contains('hidden')) return;
+    ensureLangButton(root, '.auth-card');
+    const signup = !!root.querySelector('#auth-fullname');
+    setText('#auth-screen h1', signup ? 'auth.register' : 'auth.welcome');
+    setText('#auth-screen .sub', signup ? 'auth.sub.signup' : 'auth.sub.signin');
+    const ids = {
+      'auth-fullname': 'auth.name',
+      'auth-orgname': 'auth.org',
+      'auth-email': 'auth.email',
+      'auth-password': 'auth.password'
+    };
+    root.querySelectorAll('label').forEach((el) => {
+      const key = ids[el.htmlFor];
+      if (key) el.textContent = t(key);
+    });
+    const btn = root.querySelector('#auth-btn');
+    if (btn) btn.textContent = t(signup ? 'auth.create' : 'auth.signin');
+    const toggle = root.querySelector('#auth-toggle');
+    if (toggle) toggle.textContent = t(signup ? 'auth.toggle.signin' : 'auth.toggle.signup');
+    const hint = root.querySelector('.subtitle:last-child');
+    if (hint) hint.textContent = t(signup ? 'auth.hint.signup' : 'auth.hint.signin');
+    const langBtn = root.querySelector('.eduflow-lang-btn');
+    if (langBtn) langBtn.textContent = current === 'bn' ? 'English' : 'বাংলা';
+  }
+
+  function applyAll() {
+    applyStatic();
+    applyLanding();
+    applyAuth();
+    document.documentElement.lang = current === 'bn' ? 'bn' : 'en';
+  }
+
   function smsBody(templateKey, params) {
     const fn = smsTemplates[templateKey];
     return fn ? fn(params || {}) : '';
   }
 
   document.documentElement.lang = current === 'bn' ? 'bn' : 'en';
-  window.EduFlowI18n = { t, getLang, setLang, toggleLang, applyStatic, smsBody, dict };
+
+  window.addEventListener('eduflow:langchange', () => applyAll());
+
+  const authRoot = document.getElementById('auth-screen');
+  if (authRoot) {
+    new MutationObserver(() => applyAuth()).observe(authRoot, { childList: true, subtree: true });
+  }
+
+  window.EduFlowI18n = {
+    t,
+    getLang,
+    setLang,
+    toggleLang,
+    applyStatic,
+    applyLanding,
+    applyAuth,
+    applyAll,
+    smsBody,
+    dict
+  };
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', applyAll, { once: true });
+  } else {
+    applyAll();
+  }
 })();
