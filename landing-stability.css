@@ -1,0 +1,7 @@
+html{scroll-behavior:smooth;scroll-padding-top:90px}
+.site-shell{overflow-x:hidden;overflow-y:visible}
+.site-header{isolation:isolate}
+.nav-links{z-index:51}
+.trust-row{font-size:13px}
+.menu-toggle{display:none}
+@media(max-width:720px){.menu-toggle{display:grid;place-items:center}.nav-links{z-index:51}.site-header{position:sticky;top:0}}
