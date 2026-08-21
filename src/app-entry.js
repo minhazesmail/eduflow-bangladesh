@@ -6,7 +6,6 @@ import '../config.js';
 import './supabase-global.js';
 import './security-sanitize.js';
 import './i18n.js';
-import './i18n-auth-observer-fix.js';
 import '../dev-access.js';
 import '../branch-context.js';
 import '../mock-data.js';
