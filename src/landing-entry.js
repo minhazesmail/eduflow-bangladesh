@@ -11,12 +11,13 @@ function setMenuState(open) {
   button.setAttribute('aria-label', open ? 'Close menu' : 'Open menu');
 }
 
-window.toggleMenu = () => {
+function toggleMenu() {
   const nav = document.querySelector('.nav-links');
   setMenuState(!nav?.classList.contains('open'));
-};
+}
 
 document.addEventListener('DOMContentLoaded', () => {
+  document.querySelector('.menu-toggle')?.addEventListener('click', toggleMenu);
   document.querySelectorAll('.nav-links a').forEach((link) => {
     link.addEventListener('click', () => setMenuState(false));
   });
