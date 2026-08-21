@@ -1,0 +1,11 @@
+{
+  "name": "MealHisab BD",
+  "short_name": "MealHisab",
+  "description": "Meal accounting for Bangladeshi flats and messes",
+  "start_url": "/dashboard",
+  "display": "standalone",
+  "background_color": "#f8fafc",
+  "theme_color": "#16a34a",
+  "lang": "en-BD",
+  "icons": []
+}
